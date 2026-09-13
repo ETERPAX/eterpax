@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -29,7 +29,7 @@ type Message = {
   voice_url?: string | null;
 };
 
-export default function ReviewPage() {
+function ReviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const messageId = searchParams.get("message");
@@ -615,5 +615,12 @@ const photoUrls = await Promise.all(
         </p>
       </section>
     </main>
+  );
+}
+export default function ReviewPage() {
+  return (
+    <Suspense fallback={null}>
+      <ReviewContent />
+    </Suspense>
   );
 }

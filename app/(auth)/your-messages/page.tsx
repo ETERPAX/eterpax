@@ -2,7 +2,7 @@
 import EterpaxLetterEditor from "@/components/EterpaxLetterEditor.tsx/EterpaxLetterEditor";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   MessageCircle,
@@ -32,7 +32,7 @@ type RecordedVideo = {
   filePath: string;
 };
 
-export default function YourMessagesPage() {
+function YourMessagesContent() {
   const searchParams = useSearchParams();
   const messageId = searchParams.get("message");
   const isNewMessage =
@@ -2830,5 +2830,12 @@ event.target.value = "";
       />
 
     </OnboardingFormLayout>
+  );
+}
+export default function YourMessagesPage() {
+  return (
+    <Suspense fallback={null}>
+      <YourMessagesContent />
+    </Suspense>
   );
 }
