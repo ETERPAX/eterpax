@@ -1,0 +1,41 @@
+export const pricingPlans = [
+  {
+    name: "Essential",
+    price: "Free",
+    period: "forever",
+    description: "Start protecting what matters today.",
+    features: ["1 GB secure storage", "Up to 3 beneficiaries", "Basic encryption", "Email support"],
+    cta: "Get Started",
+    highlighted: false,
+  },
+  {
+    name: "Legacy",
+    price: "$9",
+    period: "/month",
+    description: "Everything you need for a complete digital legacy.",
+    features: [
+      "100 GB secure storage",
+      "Unlimited beneficiaries",
+      "Military-grade encryption",
+      "Scheduled deliveries",
+      "Priority support",
+    ],
+    cta: "Create My Legacy",
+    highlighted: true,
+  },
+  {
+    name: "Family",
+    price: "$19",
+    period: "/month",
+    description: "Protect your entire family's digital future.",
+    features: [
+      "500 GB shared storage",
+      "Up to 6 family members",
+      "All Legacy features",
+      "Family vault sharing",
+      "Dedicated account manager",
+    ],
+    cta: "Contact Sales",
+    highlighted: false,
+  },
+] as const;

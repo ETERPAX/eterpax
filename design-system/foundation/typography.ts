@@ -1,0 +1,40 @@
+export const typography = {
+    fontFamily: {
+      display: "var(--font-playfair)",
+      body: "var(--font-inter)",
+    },
+  
+    fontSize: {
+      hero: "76px",
+      h1: "56px",
+      h2: "44px",
+      h3: "34px",
+      h4: "28px",
+  
+      bodyLg: "24px",
+      body: "18px",
+      bodySm: "16px",
+      caption: "14px",
+    },
+  
+    fontWeight: {
+      regular: 400,
+      medium: 500,
+      semibold: 600,
+      bold: 700,
+    },
+  
+    lineHeight: {
+      tight: 0.95,
+      heading: 1.1,
+      body: 1.65,
+      relaxed: 1.8,
+    },
+  
+    letterSpacing: {
+      tighter: "-0.03em",
+      tight: "-0.01em",
+      normal: "0",
+      wide: "0.02em",
+    },
+  } as const;
