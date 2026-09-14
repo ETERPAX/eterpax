@@ -23,18 +23,27 @@ export default function WelcomePage() {
       {/* CONTENT */}
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* TOP BAR */}
-        <header className="px-8 py-7 lg:px-14 lg:py-9">
-  <div className="text-2xl font-light tracking-[0.35em] text-white">
-    ETERPAX
+        <header className="flex items-start justify-between px-8 py-7 lg:px-14 lg:py-9">
+  <div>
+    <div className="text-2xl font-light tracking-[0.35em] text-white">
+      ETERPAX
+    </div>
+
+    <div className="mt-3 max-w-xs text-xs font-medium leading-5 tracking-wide text-white/75">
+      Confidence is designed.
+      <br />
+      Trust is earned.
+      <br />
+      Continuity is intentional.
+    </div>
   </div>
 
-  <div className="mt-3 max-w-xs text-xs font-medium leading-5 tracking-wide text-white/75">
-    Confidence is designed.
-    <br />
-    Trust is earned.
-    <br />
-    Continuity is intentional.
-  </div>
+  <Link
+    href="/login"
+    className="mt-1 text-sm font-medium text-white/75 transition hover:text-white"
+  >
+    Already have an account? <span className="ml-1">Log in →</span>
+  </Link>
 </header>
 
         {/* HERO CONTENT */}
