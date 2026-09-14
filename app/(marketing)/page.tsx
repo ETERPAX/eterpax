@@ -1,11 +1,7 @@
-import { Navbar } from "@/components/layout/Navbar";
-import HeroPremium from "@/components/home/HeroPremium";
+"use client";
+
+import WelcomePage from "../(auth)/welcome/page";
 
 export default function Home() {
-  return (
-    <>
-      <Navbar />
-      <HeroPremium />
-    </>
-  );
+  return <WelcomePage />;
 }

@@ -16,8 +16,8 @@ export default function WelcomePage() {
         />
 
         {/* Soft overlay for readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#071B2E]/75 via-[#071B2E]/35 to-transparent" />
-        <div className="absolute inset-0 bg-black/5" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#071B2E]/60 via-[#071B2E]/25 to-transparent" />
+<div className="absolute inset-0 bg-black/5" />
       </div>
 
       {/* CONTENT */}
