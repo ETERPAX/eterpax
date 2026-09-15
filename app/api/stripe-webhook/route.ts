@@ -115,12 +115,68 @@ export async function POST(request: Request) {
         break;
       }
 
-    case "customer.subscription.updated": {
-      const subscription = event.data.object;
-
-      console.log("Stripe subscription updated:", subscription.id);
-      break;
-    }
+      case "customer.subscription.updated": {
+        const subscription = event.data.object;
+      
+        const userId = subscription.metadata?.user_id;
+        const subscriptionItem = subscription.items.data[0];
+      
+        if (!userId || !subscriptionItem) {
+          console.error(
+            "Stripe subscription updated without user_id or subscription item:",
+            subscription.id
+          );
+          break;
+        }
+      
+        const customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer?.id;
+      
+        const { error } = await supabase
+          .from("subscriptions")
+          .upsert(
+            {
+              user_id: userId,
+              stripe_customer_id: customerId ?? null,
+              stripe_subscription_id: subscription.id,
+              stripe_price_id: subscriptionItem.price.id,
+              status: subscription.status,
+              current_period_start: new Date(
+                subscriptionItem.current_period_start * 1000
+              ).toISOString(),
+              current_period_end: new Date(
+                subscriptionItem.current_period_end * 1000
+              ).toISOString(),
+              cancel_at_period_end: subscription.cancel_at_period_end,
+              canceled_at: subscription.canceled_at
+                ? new Date(
+                    subscription.canceled_at * 1000
+                  ).toISOString()
+                : null,
+              updated_at: new Date().toISOString(),
+            },
+            {
+              onConflict: "stripe_subscription_id",
+            }
+          );
+      
+        if (error) {
+          console.error(
+            "Supabase subscription update failed:",
+            error
+          );
+          break;
+        }
+      
+        console.log(
+          "Stripe subscription updated and saved:",
+          subscription.id
+        );
+      
+        break;
+      }
 
     case "customer.subscription.deleted": {
       const subscription = event.data.object;
