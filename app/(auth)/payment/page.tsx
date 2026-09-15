@@ -1,7 +1,7 @@
 "use client";
 
 import { Lock, ShieldCheck } from "lucide-react";
-
+import { supabase } from "@/lib/supabase";
 export default function PaymentPage() {
   return (
     <main
@@ -40,10 +40,10 @@ export default function PaymentPage() {
             Secure your ETERPAX plan and keep what matters protected,
             privately and intentionally.
           </p>
-          
+
         </div>
       </section>
-      
+
 
 <section className="mx-auto max-w-4xl px-6 pb-16 md:px-10">
   <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_25px_80px_rgba(16,42,67,0.10)]">
@@ -86,7 +86,32 @@ export default function PaymentPage() {
 </div>
 <button
   type="button"
-  onClick={() => (window.location.href = "/activate")}
+  onClick={async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      window.location.href = "/login";
+      return;
+    }
+
+    const response = await fetch("/api/checkout", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data.url) {
+      console.error("Checkout error:", data.error);
+      return;
+    }
+
+    window.location.href = data.url;
+  }}
   className="mt-8 inline-flex items-center justify-center gap-3 rounded-full bg-[#0A7BA8] px-8 py-3.5 text-sm font-medium text-white transition hover:bg-[#08698F]"
 >
   Protect My Plan
@@ -97,6 +122,6 @@ export default function PaymentPage() {
   </div>
 </section>
 </main>
-    
+
   );
 }
