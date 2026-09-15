@@ -35,44 +35,61 @@ export default function LoginPage() {
       <div className="grid min-h-screen w-full lg:grid-cols-2">
 
         {/* HERO */}
-        <div className="relative hidden min-h-screen overflow-hidden lg:block">
-          <img
-            src="/images/hero-family-v2.jpg"
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+        
+<div className="relative hidden min-h-screen overflow-hidden lg:block">
+  <img
+    src="/images/hero-family-v2.jpg"
+    alt=""
+    className="absolute inset-0 h-full w-full object-cover object-right"
+  />
 
-          <div className="absolute inset-0 bg-black/20" />
+  {/* Soft overlay for readability */}
+  <div className="absolute inset-0 bg-gradient-to-r from-[#071B2E]/60 via-[#071B2E]/25 to-transparent" />
 
-          <div className="relative z-10 flex h-full flex-col justify-between p-12 text-white">
-            <div>
-              <Link
-                href="/"
-                className="text-xl font-semibold tracking-[0.28em]"
-              >
-                ETERPAX
-              </Link>
+  <div className="absolute inset-0 bg-black/5" />
 
-              <p className="mt-3 text-sm leading-6 tracking-[0.08em] text-white/90">
-                Confidence is designed.
-                <br />
-                Trust is earned.
-                <br />
-                Continuity is intentional.
-              </p>
-            </div>
+  <div className="relative z-10 flex min-h-screen flex-col">
+    {/* TOP BAR */}
+    <header className="flex items-start justify-between px-8 py-7 lg:px-14 lg:py-9">
+      <div>
+        <Link
+          href="/"
+          className="text-2xl font-light tracking-[0.35em] text-white"
+        >
+          ETERPAX
+        </Link>
 
-            <div className="max-w-xl pb-4">
-              <h2 className="text-5xl font-light tracking-tight">
-                Welcome back.
-              </h2>
-
-              <p className="mt-4 text-lg text-white/90">
-                Your continuity plan is waiting for you.
-              </p>
-            </div>
-          </div>
+        <div className="mt-3 max-w-xs text-xs font-medium leading-5 tracking-wide text-white/75">
+          Confidence is designed.
+          <br />
+          Trust is earned.
+          <br />
+          Continuity is intentional.
         </div>
+      </div>
+    </header>
+
+    {/* HERO CONTENT */}
+    <div className="flex flex-1 items-center px-8 pb-20 lg:px-14">
+      <div className="max-w-2xl">
+        <p className="mb-6 text-sm font-medium uppercase tracking-[0.28em] text-white/75">
+          Welcome back.
+        </p>
+
+        <h2 className="max-w-lg font-serif text-5xl leading-[0.98] tracking-tight text-white md:text-6xl lg:text-7xl">
+          Your continuity
+          <br />
+          is waiting.
+        </h2>
+
+        <p className="mt-6 max-w-xl text-lg leading-8 text-white/85">
+          Your messages, your wishes, and the things that matter to you
+          are safely waiting for you.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 
         {/* LOGIN */}
         <div className="flex min-h-screen items-center justify-center bg-white px-6 py-12 sm:px-10 lg:px-16 xl:px-24">
