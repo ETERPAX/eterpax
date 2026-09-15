@@ -1,6 +1,8 @@
 "use client";
 
-import { InputHTMLAttributes, ReactNode } from "react";
+import { InputHTMLAttributes, ReactNode, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+
 import clsx from "clsx";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -14,8 +16,14 @@ export function Input({
   icon,
   error,
   className,
+  type,
   ...props
 }: InputProps) {
+  const [showPassword, setShowPassword] = useState(false);
+
+  const inputType =
+    type === "password" && showPassword ? "text" : type;
+
   return (
     <div className="space-y-2">
       <label className="block text-sm font-medium text-[#0D2340]">
@@ -41,6 +49,7 @@ export function Input({
         )}
 
         <input
+          type={inputType}
           className={clsx(
             "w-full bg-transparent text-[#0D2340] outline-none",
             "placeholder:text-neutral-400",
@@ -48,6 +57,23 @@ export function Input({
           )}
           {...props}
         />
+
+        {type === "password" && (
+          <button
+            type="button"
+            onClick={() => setShowPassword((value) => !value)}
+            className="shrink-0 text-neutral-400 transition-colors hover:text-[#0D2340]"
+            aria-label={
+              showPassword ? "Hide password" : "Show password"
+            }
+          >
+            {showPassword ? (
+              <EyeOff size={20} />
+            ) : (
+              <Eye size={20} />
+            )}
+          </button>
+        )}
       </div>
 
       {error && (

@@ -78,8 +78,8 @@ const handleContinue = async () => {
     return;
   }
 
-  if (password.length < 6) {
-    setError("Password must be at least 6 characters.");
+  if (password.length < 8) {
+    setError("Password must be at least 8 characters.");
     setLoading(false);
     return;
   }
@@ -159,7 +159,10 @@ const handleContinue = async () => {
   value={password}
   onChange={(e) => setPassword(e.target.value)}
 />
-
+<p className="text-sm text-neutral-500 -mt-3">
+  Use at least 8 characters. For better security, use a mix of letters,
+  numbers, and symbols.
+</p>
 <Input
   label="Confirm Password"
   type="password"
