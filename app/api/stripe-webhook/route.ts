@@ -178,12 +178,36 @@ export async function POST(request: Request) {
         break;
       }
 
-    case "customer.subscription.deleted": {
-      const subscription = event.data.object;
-
-      console.log("Stripe subscription deleted:", subscription.id);
-      break;
-    }
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object;
+      
+        const { error } = await supabase
+          .from("subscriptions")
+          .update({
+            status: "canceled",
+            canceled_at: subscription.canceled_at
+              ? new Date(subscription.canceled_at * 1000).toISOString()
+              : new Date().toISOString(),
+            cancel_at_period_end: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("stripe_subscription_id", subscription.id);
+      
+        if (error) {
+          console.error(
+            "Supabase subscription cancellation update failed:",
+            error
+          );
+          break;
+        }
+      
+        console.log(
+          "Stripe subscription deleted and marked canceled:",
+          subscription.id
+        );
+      
+        break;
+      }
 
     default:
       console.log("Unhandled Stripe event:", event.type);
