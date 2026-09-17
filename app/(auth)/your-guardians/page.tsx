@@ -6,6 +6,7 @@ import { Plus, Pencil, Users, Mail, ShieldCheck } from "lucide-react";
 
 import { OnboardingFormLayout } from "@/components/auth/OnboardingFormLayout";
 import { Input } from "@/components/ui/Input";
+import { supabase } from "@/lib/supabase";
 
 type Guardian = {
   name: string;
@@ -30,33 +31,47 @@ export default function YourGuardiansPage() {
   const [firstName, setFirstName] = useState("your name");
 
   useEffect(() => {
-    const savedGuardians = localStorage.getItem("eterpax_guardians");
-
-    if (savedGuardians) {
-      try {
-        const parsed = JSON.parse(savedGuardians);
-
-        if (Array.isArray(parsed) && parsed.length >= 3) {
-          setGuardians(parsed);
+    const loadData = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+  
+      if (user) {
+        const { data, error } = await supabase
+          .from("guardians")
+          .select("name, email, relationship")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: true });
+      
+        if (error) {
+          console.error("Error loading guardians:", error);
+        } else if (data && data.length > 0) {
+          setGuardians([
+            ...data,
+            ...Array.from(
+              { length: Math.max(0, 3 - data.length) },
+              emptyGuardian
+            ),
+          ]);
         }
-      } catch {
-        // Ignore invalid saved data
       }
-    }
-
-    const savedAboutYou = localStorage.getItem("eterpax_about_you");
-
-    if (savedAboutYou) {
-      try {
-        const parsed = JSON.parse(savedAboutYou);
-
-        if (parsed.firstName) {
-          setFirstName(parsed.firstName);
+  
+      const savedAboutYou = localStorage.getItem("eterpax_about_you");
+  
+      if (savedAboutYou) {
+        try {
+          const parsed = JSON.parse(savedAboutYou);
+  
+          if (parsed.firstName) {
+            setFirstName(parsed.firstName);
+          }
+        } catch {
+          // Ignore invalid saved data
         }
-      } catch {
-        // Ignore invalid saved data
       }
-    }
+    };
+  
+    loadData();
   }, []);
 
   const updateGuardian = (
@@ -82,26 +97,72 @@ export default function YourGuardiansPage() {
     setOpenGuardian(newIndex);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const requiredGuardians = guardians.slice(0, 3);
-
+  
     const allComplete = requiredGuardians.every(
       (guardian) =>
         guardian.name.trim() &&
         guardian.email.trim() &&
         guardian.relationship.trim()
     );
-
+  
     if (!allComplete) {
       alert("Please complete all three required Guardians before continuing.");
       return;
     }
-
+  
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+  
+    if (userError || !user) {
+      alert("Your session has expired. Please log in again.");
+      window.location.href = "/login";
+      return;
+    }
+  
+    const { error: deleteError } = await supabase
+      .from("guardians")
+      .delete()
+      .eq("user_id", user.id);
+  
+    if (deleteError) {
+      console.error("Error clearing guardians:", deleteError);
+      alert("We could not save your Guardians. Please try again.");
+      return;
+    }
+  
+    const { error: insertError } = await supabase
+      .from("guardians")
+      .insert(
+        guardians
+          .filter(
+            (guardian) =>
+              guardian.name.trim() &&
+              guardian.email.trim() &&
+              guardian.relationship.trim()
+          )
+          .map((guardian) => ({
+            user_id: user.id,
+            name: guardian.name.trim(),
+            email: guardian.email.trim(),
+            relationship: guardian.relationship.trim(),
+          }))
+      );
+  
+    if (insertError) {
+      console.error("Error saving guardians:", insertError);
+      alert("We could not save your Guardians. Please try again.");
+      return;
+    }
+  
     localStorage.setItem(
       "eterpax_guardians",
       JSON.stringify(guardians)
     );
-
+  
     window.location.href = "/check-in";
   };
 
