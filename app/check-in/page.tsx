@@ -16,19 +16,38 @@ export default function CheckInPage() {
 
   
 
-    useEffect(() => {
-      const loadUser = async () => {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-    
-        if (user?.user_metadata?.firstName) {
-          setFirstName(user.user_metadata.firstName);
+  useEffect(() => {
+    const loadUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+  
+      if (!user) return;
+  
+      if (user.user_metadata?.firstName) {
+        setFirstName(user.user_metadata.firstName);
+      }
+  
+      const { data: checkIn } = await supabase
+        .from("check_ins")
+        .select("frequency_days")
+        .eq("user_id", user.id)
+        .maybeSingle();
+       
+      if (checkIn) {
+        const frequency = checkIn.frequency_days;
+  
+        if ([30, 45, 60].includes(frequency)) {
+          setSelectedFrequency(frequency);
+        } else {
+          setSelectedFrequency(0);
+          setCustomDays(String(frequency));
         }
-      };
-    
-      loadUser();
-    }, []);
+      }
+    };
+  
+    loadUser();
+  }, []);
 
   const frequencies = [
     {
@@ -221,7 +240,7 @@ export default function CheckInPage() {
                     value={customDays}
                     onChange={(e) => setCustomDays(e.target.value)}
                     placeholder="30"
-                    className="w-28 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-sm outline-none transition focus:border-[#0A7BA8] focus:ring-2 focus:ring-[#0A7BA8]/10"
+                    className="w-28 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-sm text-slate-900 outline-none transition"
                   />
 
                   <span className="text-sm text-slate-600">days</span>
