@@ -6,48 +6,71 @@ import { supabase } from "@/lib/supabase";
 import {
   ArrowRight,
   Check,
-  LogOut,
+  
   MessageCircle,
-  Settings,
+ 
   ShieldCheck,
   Users,
 } from "lucide-react";
 
-async function handleLogout() {
-  await supabase.auth.signOut();
-  window.location.href = "/login";
-}
+
 
 export default function DashboardPage() {
   const [guardianCount, setGuardianCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [checkInFrequency, setCheckInFrequency] = useState<number | null>(null);
 
   useEffect(() => {
-    const savedGuardians = localStorage.getItem("eterpax_guardians");
-
-    if (savedGuardians) {
-      try {
-        const parsed = JSON.parse(savedGuardians);
-
-        if (Array.isArray(parsed)) {
-          const completedGuardians = parsed.filter(
-            (guardian) =>
-              guardian?.name?.trim() &&
-              guardian?.email?.trim() &&
-              guardian?.relationship?.trim()
-          );
-
-          setGuardianCount(completedGuardians.length);
-        } else {
-          setGuardianCount(0);
-        }
-      } catch {
+    const loadGuardianCount = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+    
+      if (!user) {
         setGuardianCount(0);
+        return;
       }
-    } else {
-      setGuardianCount(0);
-    }
+    
+      const { count, error } = await supabase
+        .from("guardians")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+    
+      if (error) {
+        console.error("ERROR LOADING GUARDIAN COUNT:", error);
+        setGuardianCount(0);
+        return;
+      }
+    
+      setGuardianCount(count ?? 0);
+    };
+    const loadCheckIn = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+    
+      if (!user) {
+        setCheckInFrequency(null);
+        return;
+      }
+    
+      const { data, error } = await supabase
+        .from("check_ins")
+        .select("frequency_days")
+        .eq("user_id", user.id)
+        .maybeSingle();
+    
+      if (error) {
+        console.error("ERROR LOADING CHECK-IN:", error);
+        setCheckInFrequency(null);
+        return;
+      }
+    
+      setCheckInFrequency(data?.frequency_days ?? null);
+    };
+    
+    loadGuardianCount();
+    loadCheckIn();
 
     const loadMessageCount = async () => {
       const {
@@ -109,40 +132,28 @@ export default function DashboardPage() {
                 Continuity is intentional.
               </div>
             </div>
+            <nav className="hidden items-center gap-8 md:flex">
+  <Link
+    href="/preview"
+    className="text-sm font-medium text-white/85 transition hover:text-white"
+  >
+    Preview
+  </Link>
 
+  <Link
+    href="/your-messages"
+    className="text-sm font-medium text-white/85 transition hover:text-white"
+  >
+    Messages
+  </Link>
+</nav>
             {/* Settings */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setMenuOpen(!menuOpen)}
-                aria-label="Open settings menu"
-                className="flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-white/90 text-[#17375E] shadow-lg backdrop-blur-sm transition hover:bg-white"
-              >
-                <Settings className="h-5 w-5" />
-              </button>
-
-              {menuOpen && (
-                <div className="absolute right-0 top-14 z-50 w-48 rounded-2xl border border-neutral-200 bg-white p-2 shadow-xl">
-                  <Link
-                    href="/settings"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[#17375E] transition hover:bg-neutral-50"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-medium text-[#17375E] transition hover:bg-neutral-50"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Logout
-                  </button>
-                </div>
-              )}
-            </div>
+<Link
+  href="/settings"
+  className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/90 px-6 py-3 text-sm font-medium text-[#17375E] shadow-lg backdrop-blur-sm transition hover:bg-white"
+>
+  Settings
+</Link>
           </header>
 
           {/* Main */}
@@ -223,7 +234,7 @@ export default function DashboardPage() {
                 <div className="mt-5 grid gap-5 md:grid-cols-3">
                   {/* Guardians */}
                   <Link
-                    href="/your-guardians"
+                    href="/guardians"
                     className="group rounded-[26px] border border-white/60 bg-white/90 p-6 shadow-xl backdrop-blur-md transition hover:-translate-y-1 hover:bg-white"
                   >
                     <div className="flex items-start justify-between">
@@ -260,7 +271,7 @@ export default function DashboardPage() {
 
                   {/* Check-in */}
                   <Link
-                    href="/check-in"
+                   href="/check-in-settings"
                     className="group rounded-[26px] border border-white/60 bg-white/90 p-6 shadow-xl backdrop-blur-md transition hover:-translate-y-1 hover:bg-white"
                   >
                     <div className="flex items-start justify-between">
@@ -274,7 +285,7 @@ export default function DashboardPage() {
                     </p>
 
                     <h3 className="mt-2 text-xl font-medium text-[#0D2340]">
-                      Not configured
+                    {checkInFrequency ? `Every ${checkInFrequency} days` : "Not configured"}
                     </h3>
 
                     <p className="mt-2 text-sm leading-6 text-neutral-500">
@@ -283,7 +294,7 @@ export default function DashboardPage() {
                     </p>
 
                     <div className="mt-5 flex items-center text-sm font-medium text-[#17375E]">
-                      Set up Check-in
+                    Manage Check-in
                       <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />
                     </div>
                   </Link>

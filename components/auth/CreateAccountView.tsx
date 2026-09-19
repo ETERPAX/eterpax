@@ -62,7 +62,7 @@ const handleContinue = async () => {
     }
 
     setLoading(false);
-    window.location.href = "/your-messages";
+    window.location.href = "/dashboard";
     return;
   }
 
@@ -105,7 +105,7 @@ const handleContinue = async () => {
   console.log("ACCOUNT CREATED:", data.user);
 
   setLoading(false);
-  window.location.href = "/your-messages";
+  window.location.href = "/dashboard";
 };
 
   return (

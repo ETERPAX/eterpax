@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { OnboardingFormLayout } from "@/components/auth/OnboardingFormLayout";
-
+import { supabase } from "@/lib/supabase";
 export default function CheckInPage() {
   const [selectedFrequency, setSelectedFrequency] = useState<number | null>(
     null
@@ -14,21 +14,21 @@ export default function CheckInPage() {
   const [firstName, setFirstName] = useState("your name");
   const router = useRouter();
 
-  useEffect(() => {
-    const savedAboutYou = localStorage.getItem("eterpax_about_you");
+  
 
-    if (savedAboutYou) {
-      try {
-        const parsed = JSON.parse(savedAboutYou);
-
-        if (parsed.firstName) {
-          setFirstName(parsed.firstName);
+    useEffect(() => {
+      const loadUser = async () => {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+    
+        if (user?.user_metadata?.firstName) {
+          setFirstName(user.user_metadata.firstName);
         }
-      } catch {
-        // Ignore invalid saved data
-      }
-    }
-  }, []);
+      };
+    
+      loadUser();
+    }, []);
 
   const frequencies = [
     {
@@ -294,10 +294,10 @@ export default function CheckInPage() {
           <div className="mx-auto mt-8 max-w-4xl">
             <button
               type="button"
-              onClick={() => router.push("/review")}
+              onClick={() => router.push("/payment")}
               className="inline-flex w-full items-center justify-center gap-3 rounded-full bg-[#0A7BA8] px-7 py-4 text-sm font-medium text-white shadow-xl shadow-black/10 transition hover:bg-[#08698F]"
             >
-              Continue to Review
+              Continue to Protect
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>

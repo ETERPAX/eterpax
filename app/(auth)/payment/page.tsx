@@ -6,7 +6,7 @@ export default function PaymentPage() {
   return (
     <main
       className="min-h-screen overflow-y-auto bg-cover bg-center bg-fixed text-[#102A43]"
-      style={{ backgroundImage: "url('/images/hero-family-v2.jpg')" }}
+      style={{ backgroundImage: "url('/images/hero-payment-v1.jpg')" }}
     >
       <header className="flex items-center justify-between px-8 py-6 md:px-14">
         <div className="text-xl font-medium tracking-[0.28em]">
@@ -75,7 +75,7 @@ export default function PaymentPage() {
   </p>
 
   <p className="mt-2 text-sm text-slate-500">
-    Letters · Messages · Voice Notes · Wishes · Memories
+  Letters · Messages · Voice Notes · Video · Wishes · Memories
   </p>
 </div>
   </span>
