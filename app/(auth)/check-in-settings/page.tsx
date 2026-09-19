@@ -167,12 +167,20 @@ export default function CheckInSettingsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white">
-      <div className="mx-auto w-full max-w-4xl px-6 py-10 md:px-10">
+    <main className="relative min-h-screen overflow-hidden bg-[#102A43]">
+        <div className="absolute inset-0">
+  <img
+    src="/images/hero-payment-v1.jpg"
+    alt=""
+    className="h-full w-full object-cover object-right"
+  />
+  <div className="absolute inset-0 bg-black/5" />
+</div>
+<div className="relative z-10 mx-auto w-full max-w-4xl px-6 py-10 md:px-10">
         <div className="mb-10">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm text-slate-500 transition hover:text-slate-900"
+            className="inline-flex items-center gap-2 text-sm text-white transition hover:text-white/80"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Dashboard
@@ -180,16 +188,16 @@ export default function CheckInSettingsPage() {
         </div>
 
         <div className="max-w-3xl">
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-500">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
             <ShieldCheck className="h-4 w-4" />
             Your Continuity
           </div>
 
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-900">
+          <h1 className="text-4xl font-semibold tracking-tight text-white">
             Your Check-in
           </h1>
 
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
+          <p className="mt-4 max-w-2xl text-lg leading-8 text-white">
             Stay connected to what you leave. Choose how often ETERPAX should
             ask you to confirm that everything is still in place.
           </p>
@@ -197,11 +205,11 @@ export default function CheckInSettingsPage() {
 
         <section className="mt-12">
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-slate-900">
+          <h2 className="text-xl font-semibold text-white">
               Choose your rhythm
             </h2>
 
-            <p className="mt-2 text-sm leading-6 text-slate-500">
+            <p className="mt-2 text-sm leading-6 text-white">
               You can change this preference whenever you want.
             </p>
           </div>
@@ -311,7 +319,7 @@ export default function CheckInSettingsPage() {
         <div className="mt-10 flex flex-col-reverse gap-3 border-t border-slate-200 pt-8 sm:flex-row sm:items-center sm:justify-between">
           <Link
             href="/dashboard"
-            className="inline-flex items-center justify-center rounded-xl border border-slate-300 px-5 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            className="inline-flex items-center justify-center rounded-xl border border-white/70 bg-white px-5 py-3 text-sm font-medium text-[#0D2340] transition hover:bg-white/90"
           >
             Cancel
           </Link>
@@ -320,7 +328,7 @@ export default function CheckInSettingsPage() {
             type="button"
             onClick={handleSave}
             disabled={saving || selectedFrequency === null}
-            className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-xl bg-[#0A7BA8] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#086A91] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save Changes"}
           </button>

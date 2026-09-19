@@ -189,8 +189,17 @@ export default function GuardiansPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F7F9FB] px-6 py-10">
-      <div className="mx-auto max-w-4xl space-y-8">
+    <main className="relative min-h-screen overflow-hidden bg-[#102A43] px-6 py-10">
+        <div className="absolute inset-0">
+  <img
+    src="/images/hero-payment-v1.jpg"
+    alt=""
+    className="h-full w-full object-cover object-right"
+  />
+  <div className="absolute inset-0 bg-transparent" />
+  <div className="absolute inset-0 bg-black/5" />
+</div>
+<div className="relative z-10 mx-auto max-w-4xl space-y-8">
 
         {/* HEADER */}
         <div>
@@ -219,7 +228,7 @@ export default function GuardiansPage() {
         </div>
 
         {/* ACTIVE PLAN CONTEXT */}
-        <div className="rounded-2xl border border-[#0A7BA8]/20 bg-[#0A7BA8]/5 p-6">
+        <div className="rounded-2xl border border-[#0A7BA8]/20 bg-white p-6">
           <div className="flex items-start gap-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
               <ShieldCheck className="h-5 w-5 text-[#0A7BA8]" />
@@ -242,11 +251,11 @@ export default function GuardiansPage() {
         {/* GUARDIANS */}
         <section className="space-y-4">
           <div>
-            <h2 className="text-xl font-medium text-[#0D2340]">
+            <h2 className="text-xl font-medium text-white">
               Your Guardians
             </h2>
 
-            <p className="mt-1 text-sm text-neutral-500">
+            <p className="mt-1 text-sm text-white/80">
               You need at least three Guardians. You may have up to six.
             </p>
           </div>
@@ -399,7 +408,7 @@ export default function GuardiansPage() {
               <button
                 type="button"
                 onClick={addGuardian}
-                className="flex min-h-[170px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#0A7BA8]/40 bg-[#0A7BA8]/5 p-5 text-center transition hover:border-[#0A7BA8] hover:bg-[#0A7BA8]/10"
+                className="flex min-h-[170px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#0A7BA8]/40 bg-[#0A7BA8]/5 p-5 text-center transition hover:border-[#0A7BA8] bg-white hover:bg-[#0A7BA8]/10"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm">
                   <Plus className="h-5 w-5 text-[#0A7BA8]" />
