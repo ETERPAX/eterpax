@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [guardianCount, setGuardianCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
   const [checkInFrequency, setCheckInFrequency] = useState<number | null>(null);
+  const [protectionActive, setProtectionActive] = useState(false);
 
   useEffect(() => {
     const loadGuardianCount = async () => {
@@ -71,6 +72,35 @@ export default function DashboardPage() {
     
     loadGuardianCount();
     loadCheckIn();
+    const loadProtection = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+    
+      if (!user) {
+        setProtectionActive(false);
+        return;
+      }
+    
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("status")
+        .eq("user_id", user.id)
+        .maybeSingle();
+        console.log("PROTECTION USER:", user.id);
+console.log("PROTECTION DATA:", data);
+console.log("PROTECTION ERROR:", error);
+    
+      if (error) {
+        console.error("ERROR LOADING PROTECTION:", error);
+        setProtectionActive(false);
+        return;
+      }
+    
+      setProtectionActive(data?.status === "active");
+    };
+    
+    loadProtection();
 
     const loadMessageCount = async () => {
       const {
@@ -310,8 +340,8 @@ export default function DashboardPage() {
                     </p>
 
                     <h3 className="mt-2 text-xl font-medium text-[#0D2340]">
-                      Not active
-                    </h3>
+  {protectionActive ? "Active" : "Not active"}
+</h3>
 
                     <p className="mt-2 text-sm leading-6 text-neutral-500">
                       Protect your ETERPAX when you&apos;re ready.
