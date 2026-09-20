@@ -564,7 +564,7 @@ if (existingVideosError) {
               ideal: 720,
             },
           },
-          audio: false,
+          audio: true,
         });
     
         return stream;
