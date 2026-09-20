@@ -2412,7 +2412,13 @@ if (recordedVideo) {
 
                   </div>
                 )}
-
+<button
+  type="button"
+  onClick={closeVideoRecorder}
+  className="mt-6 w-full rounded-full bg-[#0A7BA8] px-6 py-3 font-medium text-white transition hover:bg-[#08698f]"
+>
+  Done
+</button>
               </div>
             )}
 
@@ -2502,8 +2508,15 @@ if (recordedVideo) {
   </div>
 )}
 
-                </div>
-
+                
+                <button
+  type="button"
+  onClick={closeVoiceRecorder}
+  className="mt-6 w-full rounded-full bg-[#0A7BA8] px-6 py-3 font-medium text-white transition hover:bg-[#08698f]"
+>
+  Done
+</button>
+</div>
               </div>
             )}
 
