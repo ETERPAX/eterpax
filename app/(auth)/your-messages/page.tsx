@@ -1353,8 +1353,13 @@ let uploadedDocumentPath = documentPath;
 
 if (documentFiles.length > 0) {
   for (const [index, file] of documentFiles.entries()) {
-    const filePath =
-      `${user.id}/${Date.now()}-${index}-${file.name}`;
+    const safeFileName = file.name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+  
+  const filePath =
+    `${user.id}/${Date.now()}-${index}-${safeFileName}`;
 
     const {
       error,
