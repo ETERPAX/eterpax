@@ -256,6 +256,8 @@ const [letterSaved, setLetterSaved] = useState(false);
 
     const [recordedVideo, setRecordedVideo] =
     useState<RecordedVideo | null>(null);
+    const recordedVideoRef =
+  useRef<RecordedVideo | null>(null);
     const [existingVideoUrl, setExistingVideoUrl] = useState<string | null>(null);
     const [existingVideoPath, setExistingVideoPath] = useState<string | null>(null);
     const [removedExistingVideo, setRemovedExistingVideo] = useState(false);
@@ -758,7 +760,20 @@ cameraStreamRef.current = stream;
           console.error("VIDEO: USUARIO NO AUTENTICADO");
           return;
         }
-  
+        if (recordedVideoRef.current?.filePath) {
+          const { error: removePreviousVideoError } = await supabase.storage
+            .from("message-videos")
+            .remove([recordedVideoRef.current.filePath]);
+        
+          if (removePreviousVideoError) {
+            console.error(
+              "VIDEO: ERROR REMOVING PREVIOUS RECORDING:",
+              removePreviousVideoError
+            );
+            alert(removePreviousVideoError.message);
+            return;
+          }
+        }
         const fileName = `${Date.now()}.webm`;
         const filePath = `${user.id}/${fileName}`;
   
@@ -777,13 +792,15 @@ cameraStreamRef.current = stream;
           return;
         }
   
-        setRecordedVideo({
-          
-            id: Date.now(),
-            url,
-            blob,
-            filePath,
-          });
+        const newRecordedVideo = {
+          id: Date.now(),
+          url,
+          blob,
+          filePath,
+        };
+        
+        recordedVideoRef.current = newRecordedVideo;
+        setRecordedVideo(newRecordedVideo);
   
         videoChunksRef.current = [];
   
