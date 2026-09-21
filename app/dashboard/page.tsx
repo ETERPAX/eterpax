@@ -184,21 +184,7 @@ setMessages(messageData ?? []);
                 Continuity is intentional.
               </div>
             </div>
-            <nav className="hidden items-center gap-8 md:flex">
-  <Link
-    href="/preview"
-    className="text-sm font-medium text-white/85 transition hover:text-white"
-  >
-    Preview
-  </Link>
-
-  <Link
-    href="/your-messages"
-    className="text-sm font-medium text-white/85 transition hover:text-white"
-  >
-    Messages
-  </Link>
-</nav>
+           
             {/* Settings */}
 <Link
   href="/settings"
@@ -283,7 +269,7 @@ setMessages(messageData ?? []);
   <button
     type="button"
     onClick={() => setShowMessagesModal(true)}
-    className="text-sm font-medium text-[#17375E] transition hover:text-[#0A7BA8]"
+    className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#0A7BA8] px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#08698f]"
   >
     View Messages
   </button>
