@@ -1,13 +1,15 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ShieldCheck,
-  ArrowRight,
   Lock,
   FileText,
+  Video,
+  Mic,
+  Images,
+  X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -29,12 +31,36 @@ type Message = {
   voice_url?: string | null;
 };
 
+type PreviewModal =
+  | { type: "letter"; message: Message }
+  | { type: "video"; message: Message }
+  | { type: "voice"; message: Message }
+  | { type: "photos"; message: Message }
+  | { type: "documents"; message: Message }
+  | null;
+
+function hasLetter(body: string | null) {
+  if (!body) return false;
+
+  const plainText = body
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<\/p>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .trim();
+
+  return plainText.length > 0;
+}
+
 function ReviewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const messageId = searchParams.get("message");
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewModal, setPreviewModal] =
+    useState<PreviewModal>(null);
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -44,6 +70,12 @@ function ReviewContent() {
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
+        setLoading(false);
+        return;
+      }
+
+      if (!messageId) {
+        setMessages([]);
         setLoading(false);
         return;
       }
@@ -67,41 +99,58 @@ function ReviewContent() {
       const messagesWithUrls = await Promise.all(
         (data ?? []).map(async (message) => {
           // LEGACY DOCUMENT URL
-const documentUrl: string | null = null;
-    // MULTIPLE DOCUMENTS FOR THIS MESSAGE
-    const { data: documentRows, error: documentRowsError } = await supabase
-      .from("message_documents")
-      .select("document_path")
-      .eq("message_id", message.id)
-      .order("created_at", { ascending: true });
+          const documentUrl: string | null = null;
 
-    if (documentRowsError) {
-      console.error("ERROR LOADING MESSAGE DOCUMENTS:", documentRowsError);
-    }
+          // MULTIPLE DOCUMENTS FOR THIS MESSAGE
+          const {
+            data: documentRows,
+            error: documentRowsError,
+          } = await supabase
+            .from("message_documents")
+            .select("document_path")
+            .eq("message_id", message.id)
+            .order("created_at", { ascending: true });
 
-    const documents = await Promise.all(
-      (documentRows ?? []).map(async (document) => {
-        const { data: signedData, error: signedError } =
-          await supabase.storage
-            .from("message-documents")
-            .createSignedUrl(document.document_path, 3600);
+          if (documentRowsError) {
+            console.error(
+              "ERROR LOADING MESSAGE DOCUMENTS:",
+              documentRowsError
+            );
+          }
 
-        if (signedError) {
-          console.error("ERROR CREATING DOCUMENT URL:", signedError);
-          return null;
-        }
+          const documents = await Promise.all(
+            (documentRows ?? []).map(async (document) => {
+              const {
+                data: signedData,
+                error: signedError,
+              } = await supabase.storage
+                .from("message-documents")
+                .createSignedUrl(
+                  document.document_path,
+                  3600
+                );
 
-        return {
-          path: document.document_path,
-          url: signedData.signedUrl,
-        };
-      })
-    );
+              if (signedError) {
+                console.error(
+                  "ERROR CREATING DOCUMENT URL:",
+                  signedError
+                );
+                return null;
+              }
+
+              return {
+                path: document.document_path,
+                url: signedData.signedUrl,
+              };
+            })
+          );
+
           // VIDEOS FOR THIS MESSAGE
-          const { data: videos, error: videosError } = await supabase
-            .from("message_videos")
-            .select("video_path")
-            .eq("message_id", message.id);
+          const { data: videos, error: videosError } =
+            await supabase
+              .from("message_videos")
+              .select("video_path")
+              .eq("message_id", message.id);
 
           if (videosError) {
             console.error(
@@ -110,7 +159,6 @@ const documentUrl: string | null = null;
             );
           }
 
-          // CREATE SIGNED URL FOR EACH VIDEO
           const videoUrls = await Promise.all(
             (videos ?? []).map(async (video) => {
               const {
@@ -132,6 +180,7 @@ const documentUrl: string | null = null;
             })
           );
 
+          // VOICE FOR THIS MESSAGE
           let voiceUrl: string | null = null;
 
           if (message.voice_path) {
@@ -139,9 +188,9 @@ const documentUrl: string | null = null;
               data: signedVoiceUrlData,
               error: signedVoiceUrlError,
             } = await supabase.storage
-            .from("message-audio")
+              .from("message-audio")
               .createSignedUrl(message.voice_path, 3600);
-          
+
             if (signedVoiceUrlError) {
               console.error(
                 "ERROR CREATING VOICE URL:",
@@ -151,49 +200,60 @@ const documentUrl: string | null = null;
               voiceUrl = signedVoiceUrlData.signedUrl;
             }
           }
+
           // PHOTOS FOR THIS MESSAGE
-const { data: photos, error: photosError } = await supabase
-.from("message_photos")
-.select("storage_path")
-.eq("message_id", message.id)
-.order("sort_order", { ascending: true });
+          const { data: photos, error: photosError } =
+            await supabase
+              .from("message_photos")
+              .select("storage_path")
+              .eq("message_id", message.id)
+              .order("sort_order", { ascending: true });
 
-if (photosError) {
-console.error("ERROR LOADING MESSAGE PHOTOS:", photosError);
-}
+          if (photosError) {
+            console.error(
+              "ERROR LOADING MESSAGE PHOTOS:",
+              photosError
+            );
+          }
 
-const photoUrls = await Promise.all(
-(photos ?? []).map(async (photo) => {
-  const {
-    data: signedPhotoUrlData,
-    error: signedPhotoUrlError,
-  } = await supabase.storage
-    .from("message-photos")
-    .createSignedUrl(photo.storage_path, 3600);
+          const photoUrls = await Promise.all(
+            (photos ?? []).map(async (photo) => {
+              const {
+                data: signedPhotoUrlData,
+                error: signedPhotoUrlError,
+              } = await supabase.storage
+                .from("message-photos")
+                .createSignedUrl(photo.storage_path, 3600);
 
-  if (signedPhotoUrlError) {
-    console.error(
-      "ERROR CREATING PHOTO URL:",
-      signedPhotoUrlError
-    );
-    return null;
-  }
+              if (signedPhotoUrlError) {
+                console.error(
+                  "ERROR CREATING PHOTO URL:",
+                  signedPhotoUrlError
+                );
+                return null;
+              }
 
-  return signedPhotoUrlData.signedUrl;
-})
-);
+              return signedPhotoUrlData.signedUrl;
+            })
+          );
+
           return {
-
             ...message,
             document_url: documentUrl,
             documents: documents.filter(
-              (document): document is { path: string; url: string } =>
-                Boolean(document)
+              (
+                document
+              ): document is {
+                path: string;
+                url: string;
+              } => Boolean(document)
             ),
             video_urls: videoUrls.filter(
               (url): url is string => Boolean(url)
             ),
-            photo_urls: photoUrls.filter((url): url is string => Boolean(url)),
+            photo_urls: photoUrls.filter(
+              (url): url is string => Boolean(url)
+            ),
             voice_url: voiceUrl,
           };
         })
@@ -204,419 +264,476 @@ const photoUrls = await Promise.all(
     };
 
     loadMessages();
-  }, []);
+  }, [messageId]);
+
+  const closeModal = () => {
+    setPreviewModal(null);
+  };
 
   return (
     <main
-      className="min-h-screen overflow-y-auto overflow-x-hidden bg-cover bg-center bg-fixed text-[#102A43]"
+      className="relative min-h-screen overflow-x-hidden bg-cover bg-center bg-fixed text-white"
       style={{
-        backgroundImage: "url('/images/hero-family-v2.jpg')",
+        backgroundImage:
+          "url('/images/hero-family-v2.jpg')",
       }}
     >
-      {/* Header */}
-      <header className="flex items-center justify-between px-8 py-6 md:px-14">
-        <div className="text-xl font-medium tracking-[0.28em]">
-          ETERPAX
+      {/* SAME ETERPAX HERO FILTER */}
+      <div className="fixed inset-0 bg-gradient-to-r from-[#071B2E]/60 via-[#071B2E]/25 to-transparent pointer-events-none" />
+      <div className="fixed inset-0 bg-black/5 pointer-events-none" />
+
+      {/* HEADER */}
+      <header className="relative z-10 flex items-start justify-between px-8 pb-6 pt-10 md:px-14 md:pt-12">
+        <div>
+          <div className="text-xl font-medium tracking-[0.28em] text-white">
+            ETERPAX
+          </div>
+
+          <div className="mt-3 text-xs font-medium leading-5 tracking-wide text-white/75">
+            Confidence is designed.
+            <br />
+            Trust is earned.
+            <br />
+            Continuity is intentional.
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-[#64748B]">
+        <div className="flex items-center gap-2 text-sm text-white/70">
           <ShieldCheck className="h-4 w-4" />
           Secure Preview
         </div>
       </header>
 
-      {/* Main content */}
-      <section className="mx-auto max-w-6xl px-6 pb-10 pt-4 md:px-10">
+      {/* MAIN */}
+      <section className="relative z-10 mx-auto max-w-6xl px-6 pb-14 pt-4 md:px-10">
         <div className="mb-8">
           <button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="inline-flex items-center text-sm font-medium text-slate-500 transition hover:text-[#0A7BA8]"
+            className="inline-flex items-center text-sm font-medium text-white/80 transition hover:text-white"
           >
             ← Back to Dashboard
           </button>
         </div>
 
-        {/* Intro */}
-        <div className="mx-auto max-w-3xl text-center">
-          <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-[#0A7BA8]">
+        {/* INTRO */}
+        <div className="mx-auto max-w-4xl text-center">
+          <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-[#2AA7D6]">
             Your Continuity Plan
           </p>
 
-          <h1 className="font-serif text-4xl font-light tracking-tight md:text-5xl">
-            See how your message will feel.
+          <h1 className="font-serif text-4xl font-light tracking-tight text-white md:text-5xl">
+            See what you&apos;ve chosen to preserve.
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            Before you activate your plan, experience what your loved one
-            will see when your message is delivered.
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/85">
+            Review your message and everything you&apos;ve
+            included, all in one place.
           </p>
         </div>
 
-        {/* Preview card */}
-        <div className="mx-auto mt-8 max-w-5xl overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_25px_80px_rgba(16,42,67,0.10)]">
-          {/* Preview header */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 md:px-8">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-                Message Preview
-              </p>
-
-              <p className="mt-1 text-sm text-slate-600">
-                How it will appear to your loved one
+        {/* CONTENT */}
+        <div className="mx-auto mt-12 max-w-4xl">
+          {loading ? (
+            <div className="py-16 text-center">
+              <p className="text-sm text-white/70">
+                Loading your message...
               </p>
             </div>
+          ) : messages.length === 0 ? (
+            <div className="rounded-3xl border border-white/20 bg-black/15 p-10 text-center backdrop-blur-md">
+              <p className="text-xs uppercase tracking-[0.2em] text-white/60">
+                No messages yet
+              </p>
 
-            <div className="flex items-center gap-2 rounded-full bg-[#F0F7FA] px-3 py-2 text-xs text-[#0A7BA8]">
-              <Lock className="h-3.5 w-3.5" />
-              Private & Secure
+              <h2 className="mt-4 font-serif text-3xl font-light text-white">
+                Your continuity collection is waiting.
+              </h2>
+
+              <p className="mt-4 text-base leading-7 text-white/70">
+                Create your first message and it will appear
+                here.
+              </p>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-10">
+              {messages.map((message, index) => {
+                const letterExists = hasLetter(message.body);
+                const videoExists =
+                  message.video_urls.length > 0;
+                const voiceExists = Boolean(
+                  message.voice_url
+                );
+                const photosExist =
+                  message.photo_urls.length > 0;
+                const documentsExist =
+                  message.documents.length > 0 ||
+                  Boolean(
+                    message.document_path &&
+                      message.document_url
+                  );
 
-          {/* Message experience */}
-          <div className="bg-[#FAFAF8] px-6 py-10 md:px-14 md:py-14">
-            <div className="mx-auto max-w-3xl">
-              {loading ? (
-                <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-                  <p className="text-sm text-slate-500">
-                    Loading your messages...
-                  </p>
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    No messages yet
-                  </p>
+                return (
+                  <div key={message.id}>
+                    {/* MESSAGE IDENTITY */}
+                    <div className="border-y border-white/30 py-6">
+                      <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/65">
+                            Message {messages.length - index}
+                          </p>
 
-                  <h2 className="mt-4 font-serif text-3xl font-light text-[#102A43]">
-                    Your continuity collection is waiting.
-                  </h2>
+                          <p className="mt-3 text-xl font-medium text-white md:text-2xl">
+                            For{" "}
+                            {message.recipient_name ||
+                              "Someone special"}
+                          </p>
+                        </div>
 
-                  <p className="mt-4 text-base leading-7 text-slate-500">
-                    Create your first message and it will appear here.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {messages.map((message, index) => (
+                        <div className="self-start rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs capitalize text-white/85 backdrop-blur-md sm:self-auto">
+                          {message.status || "draft"}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* CONTENT BUTTONS */}
+                    <div className="mt-8 flex flex-wrap gap-4">
+                      {letterExists && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewModal({
+                              type: "letter",
+                              message,
+                            })
+                          }
+                          className="group flex min-h-28 w-36 flex-col items-center justify-center rounded-2xl border border-white/30 bg-black/15 px-5 py-5 text-center backdrop-blur-md transition hover:-translate-y-1 hover:bg-white/15"
+                        >
+                          <FileText className="h-7 w-7 text-[#54BCE5]" />
+
+                          <span className="mt-3 text-sm font-medium text-white">
+                            Letter
+                          </span>
+                        </button>
+                      )}
+
+                      {videoExists && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewModal({
+                              type: "video",
+                              message,
+                            })
+                          }
+                          className="group flex min-h-28 w-36 flex-col items-center justify-center rounded-2xl border border-white/30 bg-black/15 px-5 py-5 text-center backdrop-blur-md transition hover:-translate-y-1 hover:bg-white/15"
+                        >
+                          <Video className="h-7 w-7 text-[#54BCE5]" />
+
+                          <span className="mt-3 text-sm font-medium text-white">
+                            Video
+                          </span>
+
+                          <span className="mt-1 text-xs text-white/60">
+                            {message.video_urls.length}{" "}
+                            {message.video_urls.length === 1
+                              ? "video"
+                              : "videos"}
+                          </span>
+                        </button>
+                      )}
+
+                      {voiceExists && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewModal({
+                              type: "voice",
+                              message,
+                            })
+                          }
+                          className="group flex min-h-28 w-36 flex-col items-center justify-center rounded-2xl border border-white/30 bg-black/15 px-5 py-5 text-center backdrop-blur-md transition hover:-translate-y-1 hover:bg-white/15"
+                        >
+                          <Mic className="h-7 w-7 text-[#54BCE5]" />
+
+                          <span className="mt-3 text-sm font-medium text-white">
+                            Voice
+                          </span>
+
+                          <span className="mt-1 text-xs text-white/60">
+                            1 recording
+                          </span>
+                        </button>
+                      )}
+
+                      {photosExist && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewModal({
+                              type: "photos",
+                              message,
+                            })
+                          }
+                          className="group flex min-h-28 w-36 flex-col items-center justify-center rounded-2xl border border-white/30 bg-black/15 px-5 py-5 text-center backdrop-blur-md transition hover:-translate-y-1 hover:bg-white/15"
+                        >
+                          <Images className="h-7 w-7 text-[#54BCE5]" />
+
+                          <span className="mt-3 text-sm font-medium text-white">
+                            Photos
+                          </span>
+
+                          <span className="mt-1 text-xs text-white/60">
+                            {message.photo_urls.length}{" "}
+                            {message.photo_urls.length === 1
+                              ? "photo"
+                              : "photos"}
+                          </span>
+                        </button>
+                      )}
+
+                      {documentsExist && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPreviewModal({
+                              type: "documents",
+                              message,
+                            })
+                          }
+                          className="group flex min-h-28 w-36 flex-col items-center justify-center rounded-2xl border border-white/30 bg-black/15 px-5 py-5 text-center backdrop-blur-md transition hover:-translate-y-1 hover:bg-white/15"
+                        >
+                          <FileText className="h-7 w-7 text-[#54BCE5]" />
+
+                          <span className="mt-3 text-sm font-medium text-white">
+                            Documents
+                          </span>
+
+                          <span className="mt-1 text-xs text-white/60">
+                            {message.documents.length > 0
+                              ? `${message.documents.length} ${
+                                  message.documents.length ===
+                                  1
+                                    ? "document"
+                                    : "documents"
+                                }`
+                              : "1 document"}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* FOOTER ACTIONS */}
+                    <div className="mt-10 flex flex-col justify-between gap-5 border-t border-white/25 pt-6 sm:flex-row sm:items-center">
+                      <p className="text-sm text-white/70">
+                        Your message remains private and secure.
+                      </p>
+
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/your-messages?message=${message.id}`
+                            )
+                          }
+                          className="rounded-full border border-white/40 bg-black/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-md transition hover:bg-white/15"
+                        >
+                          Edit Message
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push("/dashboard")
+                          }
+                          className="rounded-full bg-[#0A7BA8] px-6 py-3 text-sm font-medium text-white shadow-lg transition hover:bg-[#08698F]"
+                        >
+                          Back to Dashboard
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* BRAND STATEMENT */}
+        <p className="mt-14 text-center text-xs uppercase tracking-[0.24em] text-white/55">
+          Your words. Your memories. Your way.
+        </p>
+      </section>
+
+      {/* MODAL */}
+      {previewModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#071B2E]/60 p-4 backdrop-blur-sm md:p-8"
+          onClick={closeModal}
+        >
+          <div
+            className="relative max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-white/20 bg-[#FAFAF8] p-6 text-[#102A43] shadow-2xl md:p-9"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={closeModal}
+              className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-[#102A43]"
+              aria-label="Close preview"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="pr-14">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#0A7BA8]">
+                {previewModal.type}
+              </p>
+
+              <h2 className="mt-2 font-serif text-3xl font-light text-[#102A43]">
+                For{" "}
+                {previewModal.message.recipient_name ||
+                  "Someone special"}
+              </h2>
+            </div>
+
+            {/* LETTER MODAL */}
+{previewModal.type === "letter" && (
+  <div className="mt-8">
+    <div className="mx-auto max-h-[50vh] max-w-2xl overflow-y-auto rounded-2xl bg-[#FBF8F1] px-8 py-8 md:px-10 md:py-10">
+      <div
+        className="font-serif text-lg leading-9 text-[#102A43] md:text-xl"
+        dangerouslySetInnerHTML={{
+          __html: previewModal.message.body || "",
+        }}
+      />
+    </div>
+  </div>
+)}
+
+            {/* VIDEO MODAL */}
+            {previewModal.type === "video" && (
+              <div className="mt-8 space-y-5">
+                {previewModal.message.video_urls.map(
+                  (videoUrl, videoIndex) => (
                     <div
-                      key={message.id}
-                      className="space-y-4"
+                      key={videoIndex}
+                      className="overflow-hidden rounded-2xl bg-black shadow-sm"
                     >
-                      {/* Message card */}
+                      <video
+                        src={videoUrl}
+                        controls
+                        playsInline
+                        className="w-full"
+                      />
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+            {/* VOICE MODAL */}
+            {previewModal.type === "voice" &&
+              previewModal.message.voice_url && (
+                <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="mb-4 text-sm text-slate-500">
+                    Voice message
+                  </p>
+
+                  <audio
+                    src={previewModal.message.voice_url}
+                    controls
+                    preload="metadata"
+                    className="w-full"
+                  />
+                </div>
+              )}
+
+            {/* PHOTOS MODAL */}
+            {previewModal.type === "photos" && (
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                {previewModal.message.photo_urls.map(
+                  (photoUrl, photoIndex) => (
+                    <img
+                      key={photoIndex}
+                      src={photoUrl}
+                      alt={`Photo ${photoIndex + 1}`}
+                      className="h-auto w-full rounded-2xl object-cover shadow-sm"
+                    />
+                  )
+                )}
+              </div>
+            )}
+
+            {/* DOCUMENTS MODAL */}
+            {previewModal.type === "documents" && (
+              <div className="mt-8 space-y-3">
+                {previewModal.message.documents.length >
+                0 ? (
+                  previewModal.message.documents.map(
+                    (document, index) => (
                       <button
+                        key={`${document.path}-${index}`}
                         type="button"
                         onClick={() =>
                           router.push(
-                            `/your-messages?message=${message.id}`
+                            `/document-viewer?url=${encodeURIComponent(
+                              document.url
+                            )}`
                           )
                         }
-                        className="w-full rounded-2xl bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md md:p-8"
+                        className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4 text-left transition hover:border-[#0A7BA8]/40 hover:shadow-sm"
                       >
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 shrink-0 text-[#0A7BA8]" />
+
                           <div>
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                              Message {messages.length - index}
+                            <p className="text-sm font-medium text-[#102A43]">
+                              {document.path
+                                .split("/")
+                                .pop()
+                                ?.replace(
+                                  /^\d+-\d+-/,
+                                  ""
+                                ) || "Document"}
                             </p>
 
-                            <p className="mt-2 text-sm text-slate-500">
-                              For{" "}
-                              <span className="font-medium text-[#102A43]">
-                                {message.recipient_name ||
-                                  "Someone special"}
-                              </span>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Secure document
                             </p>
-                          </div>
-
-                          <div className="rounded-full bg-[#F0F7FA] px-3 py-1.5 text-xs text-[#0A7BA8]">
-                            {message.status || "draft"}
                           </div>
                         </div>
 
-                        <h2 className="mt-6 font-serif text-3xl font-light text-[#102A43] md:text-4xl">
-                          A message meant for you.
-                        </h2>
-
-                        <div className="mt-6 text-base leading-7 text-slate-600">
-  <div
-    dangerouslySetInnerHTML={{
-      __html: message.body || "<p>No message content yet.</p>",
-    }}
-  />
-</div>
-                        
+                        <span className="ml-4 text-sm font-medium text-[#0A7BA8]">
+                          View →
+                        </span>
                       </button>
-
-                      {/* Document */}
-                      {message.documents.length > 0 ? (
-  message.documents.map((document, index) => (
-    <button
-      key={`${document.path}-${index}`}
-      onClick={() => {
-        router.push(
-          `/document-viewer?url=${encodeURIComponent(document.url)}`
-        );
-      }}
-      className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"
-    >
-      <div className="flex items-center gap-3">
-        <FileText className="h-5 w-5 text-[#0A7BA8]" />
-
-        <div>
-          <p className="text-sm font-medium text-[#102A43]">
-            {document.path
-              .split("/")
-              .pop()
-              ?.replace(/^\d+-\d+-/, "") || "Document"}
-          </p>
-
-          <p className="text-xs text-slate-500">
-            Secure PDF
-          </p>
-        </div>
-      </div>
-
-      <span className="text-sm font-medium text-[#0A7BA8]">
-        View document →
-      </span>
-    </button>
-  ))
-) : message.document_path ? (
-  <button
-    onClick={() => {
-      router.push(
-        `/document-viewer?url=${encodeURIComponent(
-          message.document_url!
-        )}`
-      );
-    }}
-    className="flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3"
-  >
-    <div className="flex items-center gap-3">
-      <FileText className="h-5 w-5 text-[#0A7BA8]" />
-
-      <div>
-        <p className="text-sm font-medium text-[#102A43]">
-          {message.document_path
-            .split("/")
-            .pop()
-            ?.replace(/^\d+-\d+-/, "") || "Document"}
-        </p>
-
-        <p className="text-xs text-slate-500">
-          Secure PDF
-        </p>
-      </div>
-    </div>
-
-    <span className="text-sm font-medium text-[#0A7BA8]">
-      View document →
-    </span>
-  </button>
-) : null}
-
-                      {/* Videos */}
-                      {message.video_urls?.length > 0 && (
-                        <div className="mt-4 space-y-3">
-                          {message.video_urls.map(
-                            (videoUrl, videoIndex) => (
-                              <div
-                                key={videoIndex}
-                                className="rounded-xl border border-slate-200 bg-white p-3"
-                              >
-                                <p className="mb-2 text-xs font-medium uppercase tracking-[0.15em] text-slate-400">
-                                  Video {videoIndex + 1}
-                                </p>
-
-                                <video
-                                  src={videoUrl}
-                                  controls
-                                  playsInline
-                                  className="w-full rounded-lg"
-                                />
-                              </div>
-                            )
-                          )}
-                        </div>
-                      )}
-                      {/* Photos */}
-{message.photo_urls?.length > 0 && (
-  <div className="mt-4 space-y-3">
-    {message.photo_urls.map((photoUrl, photoIndex) => (
-      <div
-        key={photoIndex}
-        className="rounded-xl border border-slate-200 bg-white p-3"
-      >
-        <p className="mb-2 text-xs font-medium uppercase tracking-[0.15em] text-slate-400">
-          Photo {photoIndex + 1}
-        </p>
-
-        <img
-          src={photoUrl}
-          alt={`Photo ${photoIndex + 1}`}
-          className="w-full rounded-lg object-cover"
-        />
-      </div>
-    ))}
-  </div>
-)}
-                      {/* Voice */}
-{message.voice_url && (
-  <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3">
-    <p className="mb-2 text-xs font-medium uppercase tracking-[0.15em] text-slate-400">
-      Voice Message
-    </p>
-
-    <audio
-      src={message.voice_url}
-      controls
-      preload="metadata"
-      className="w-full"
-    />
-  </div>
-)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-      
-            {/* Continuity collection */}
-            <div className="mt-10">
-              <div className="mb-6 text-center">
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#0A7BA8]">
-                  Your continuity collection
-                </p>
-
-                <h3 className="mt-2 font-serif text-2xl font-light tracking-tight text-[#102A43] md:text-3xl">
-                  What you&apos;ve chosen to preserve.
-                </h3>
-
-                <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-slate-500 md:text-base">
-                  Your words, voice, memories, and important things —
-                  prepared privately for the people you trust.
-                </p>
+                    )
+                  )
+                ) : (
+                  <p className="text-sm text-slate-500">
+                    No documents available.
+                  </p>
+                )}
               </div>
+            )}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {/* Letter */}
-                <Link
-                  href="/your-messages"
-                  className="block rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:border-[#0A7BA8] hover:shadow-md"
-                >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F7FA] text-[#0A7BA8]">
-                    <FileText className="h-5 w-5" />
-                  </div>
-
-                  <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
-                    Letter
-                  </p>
-
-                  <h4 className="mt-2 font-serif text-2xl font-light text-[#102A43]">
-                    A letter meant for you.
-                  </h4>
-
-                  <p className="mt-3 text-sm leading-6 text-slate-500">
-                    Personal words, memories, and wishes written
-                    especially for you.
-                  </p>
-                </Link>
-
-                {/* Video */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F7FA] text-[#0A7BA8]">
-                    <span className="text-lg">▶</span>
-                  </div>
-
-                  <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
-                    Video
-                  </p>
-
-                  <h4 className="mt-2 font-serif text-2xl font-light text-[#102A43]">
-                    A voice meant to stay.
-                  </h4>
-
-                  <p className="mt-3 text-sm leading-6 text-slate-500">
-                    A private video message recorded especially for
-                    you.
-                  </p>
-                </div>
-
-                {/* Photos */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F7FA] text-[#0A7BA8]">
-                    <span className="text-lg">▧</span>
-                  </div>
-
-                  <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
-                    Photos
-                  </p>
-
-                  <h4 className="mt-2 font-serif text-2xl font-light text-[#102A43]">
-                    Moments to remember.
-                  </h4>
-
-                  <p className="mt-3 text-sm leading-6 text-slate-500">
-                    A private collection of photographs chosen to stay
-                    with you.
-                  </p>
-                </div>
-
-                {/* Documents */}
-                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F0F7FA] text-[#0A7BA8]">
-                    <FileText className="h-5 w-5" />
-                  </div>
-
-                  <p className="mt-5 text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
-                    Documents
-                  </p>
-
-                  <h4 className="mt-2 font-serif text-2xl font-light text-[#102A43]">
-                    Important things entrusted to you.
-                  </h4>
-
-                  <p className="mt-3 text-sm leading-6 text-slate-500">
-                    Important documents securely preserved for the right
-                    moment.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Activation footer */}
-            <div className="mt-10 flex flex-col items-center justify-between gap-5 border-t border-slate-200 pt-7 md:flex-row">
-              <div>
-                <p className="text-sm font-medium text-[#102A43]">
-                  Your message is ready.
-                </p>
-
-                <p className="mt-1 text-sm text-slate-500">
-                  You can still make changes before activation.
-                </p>
-              </div>
-
+            <div className="mt-8 flex justify-end border-t border-slate-200 pt-5">
               <button
                 type="button"
-                onClick={() => router.push("/payment")}
-                className="inline-flex items-center gap-3 rounded-full bg-[#0A7BA8] px-7 py-3.5 text-sm font-medium text-white transition hover:bg-[#08698F]"
+                onClick={closeModal}
+                className="rounded-full bg-[#0A7BA8] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#08698F]"
               >
-                Protect My Plan
-                <ArrowRight className="h-4 w-4" />
+                Done
               </button>
             </div>
           </div>
         </div>
-
-        {/* Brand statement */}
-        <p className="mt-8 text-center text-xs tracking-wide text-slate-400">
-          Confidence is designed. Trust is earned. Continuity is
-          intentional.
-        </p>
-      </section>
+      )}
     </main>
   );
 }
+
 export default function ReviewPage() {
   return (
     <Suspense fallback={null}>
