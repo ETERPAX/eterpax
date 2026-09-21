@@ -18,8 +18,17 @@ import {
 export default function DashboardPage() {
   const [guardianCount, setGuardianCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
+  const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [checkInFrequency, setCheckInFrequency] = useState<number | null>(null);
   const [protectionActive, setProtectionActive] = useState(false);
+  const [messages, setMessages] = useState<
+  {
+    id: string;
+    recipient_name: string;
+    recipient_email: string;
+    status: string;
+  }[]
+>([]);
 
   useEffect(() => {
     const loadGuardianCount = async () => {
@@ -124,6 +133,19 @@ console.log("PROTECTION ERROR:", error);
       }
 
       setMessageCount(count ?? 0);
+      const { data: messageData, error: messageError } = await supabase
+  .from("messages")
+  .select("id, recipient_name, recipient_email, status")
+  .eq("user_id", user.id)
+  .order("created_at", { ascending: false });
+
+if (messageError) {
+  console.error("ERROR LOADING MESSAGES:", messageError);
+  setMessages([]);
+  return;
+}
+
+setMessages(messageData ?? []);
     };
 
     loadMessageCount();
@@ -257,9 +279,18 @@ console.log("PROTECTION ERROR:", error);
                         : "Create Your First Message"}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
+                    {hasMessages && (
+  <button
+    type="button"
+    onClick={() => setShowMessagesModal(true)}
+    className="text-sm font-medium text-[#17375E] transition hover:text-[#0A7BA8]"
+  >
+    View Messages
+  </button>
+)}
                   </div>
                 </div>
-
+               
                 {/* Supporting Areas */}
                 <div className="mt-5 grid gap-5 md:grid-cols-3">
                   {/* Guardians */}
@@ -371,6 +402,76 @@ console.log("PROTECTION ERROR:", error);
           </footer>
         </div>
       </div>
+      {showMessagesModal && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-6 backdrop-blur-sm">
+    <div className="relative w-full max-w-4xl rounded-[32px] border border-white/70 bg-[#FCFBF8]/95 p-8 shadow-2xl md:p-10">
+      
+      <button
+        type="button"
+        onClick={() => setShowMessagesModal(false)}
+        className="absolute right-7 top-7 flex h-10 w-10 items-center justify-center rounded-full text-xl text-neutral-500 transition hover:bg-black/5 hover:text-[#17375E]"
+        aria-label="Close messages"
+      >
+        ×
+      </button>
+
+      <div className="pr-14">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0A7BA8]">
+          Your Messages
+        </p>
+
+        <h2 className="mt-3 font-serif text-4xl text-[#0D2340]">
+          What you&apos;ve chosen to preserve.
+        </h2>
+
+        <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-500">
+          Your words and memories, kept together in one place.
+        </p>
+        <Link
+  href="/your-messages?new=true"
+  className="mt-5 inline-flex items-center text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
+>
+  + Leave Something New
+</Link>
+      </div>
+
+      <div className="mt-8 max-h-[360px] space-y-3 overflow-y-auto pr-2">
+  {messages.map((message) => (
+    <div
+      key={message.id}
+      className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white/80 px-5 py-4"
+    >
+      <div className="min-w-0">
+        <p className="truncate font-medium text-[#0D2340]">
+          {message.recipient_name}
+        </p>
+
+        <p className="mt-1 truncate text-sm text-neutral-500">
+          {message.recipient_email}
+        </p>
+      </div>
+
+      <div className="ml-6 flex shrink-0 items-center gap-4">
+        <Link
+          href={`/your-messages?message=${message.id}`}
+          className="text-sm font-medium text-[#17375E] transition hover:text-[#0A7BA8]"
+        >
+          Edit
+        </Link>
+
+        <Link
+          href={`/review?message=${message.id}`}
+          className="text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
+        >
+          Preview
+        </Link>
+      </div>
+    </div>
+  ))}
+</div>
+    </div>
+  </div>
+)}
     </main>
   );
 }
