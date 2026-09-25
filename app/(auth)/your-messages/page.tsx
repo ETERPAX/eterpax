@@ -2,6 +2,7 @@
 import EterpaxLetterEditor from "@/components/EterpaxLetterEditor.tsx/EterpaxLetterEditor";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
@@ -30,6 +31,9 @@ type RecordedVideo = {
   url: string;
   blob: Blob;
   filePath: string;
+  videoIv?: string;
+  videoEncryptedKey?: string;
+  videoEncryptionVersion?: string;
 };
 
 function YourMessagesContent() {
@@ -329,10 +333,16 @@ const [letterSaved, setLetterSaved] = useState(false);
               recipient_name,
               recipient_email,
               body,
+              body_iv,
+body_encrypted_key,
+body_encryption_version,
               status,
               created_at,
               document_path,
               voice_path,
+              voice_iv,
+voice_encrypted_key,
+voice_encryption_version,
               video_path
             `
           )
@@ -349,11 +359,39 @@ const [letterSaved, setLetterSaved] = useState(false);
           setLoadingMessages(false);
           return;
         }
-
+        let decryptedBody = data.body ?? "";
+        if (
+          data.body_encryption_version === "v1" &&
+          data.body_iv &&
+          data.body_encrypted_key
+        ) {
+          if (
+            data.body_encryption_version === "v1" &&
+            data.body_iv &&
+            data.body_encrypted_key
+          ) {
+            const decryptResponse = await fetch("/api/decrypt-message", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                ciphertext: data.body,
+                iv: data.body_iv,
+                encryptedKey: data.body_encrypted_key,
+              }),
+            });
+            if (!decryptResponse.ok) {
+              throw new Error("Unable to decrypt message.");
+            }
+            const decryptData = await decryptResponse.json();
+decryptedBody = decryptData.plaintext;
+          }
+        }
         setRecipient(data.recipient_name ?? "");
         setRecipientEmail(data.recipient_email ?? "");
-        setMessage(data.body ?? "");
-        setLetterSaved(Boolean(data.body));
+        setMessage(decryptedBody);
+        setLetterSaved(Boolean(decryptedBody?.trim()));
         setDocumentPath(data.document_path ?? null);
         const {
           data: existingDocuments,
@@ -406,18 +444,59 @@ if (existingVideosError) {
     setExistingVideoPath(data.video_path);
   }
 }
-        if (data.voice_path) {
-          const { data: voiceUrlData, error: voiceUrlError } =
-            await supabase.storage
-            .from("message-audio")
-              .createSignedUrl(data.voice_path, 3600);
-        
-          if (voiceUrlError) {
-            console.error("ERROR CREATING VOICE URL:", voiceUrlError);
-          } else {
-            setRecordedVoice(voiceUrlData.signedUrl);
-          }
-        }
+if (data.voice_path) {
+  if (
+    data.voice_encryption_version === "v1" &&
+    data.voice_iv &&
+    data.voice_encrypted_key
+  ) {
+    const { data: encryptedVoice, error: voiceDownloadError } =
+      await supabase.storage
+        .from("message-audio")
+        .download(data.voice_path);
+
+    if (voiceDownloadError || !encryptedVoice) {
+      console.error("ERROR DOWNLOADING ENCRYPTED VOICE:", voiceDownloadError);
+    } else {
+      const voiceFormData = new FormData();
+      voiceFormData.append("file", encryptedVoice);
+      voiceFormData.append("iv", data.voice_iv);
+      voiceFormData.append("encryptedKey", data.voice_encrypted_key);
+
+      const voiceDecryptResponse = await fetch("/api/decrypt-file", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "X-Encryption-IV": data.voice_iv,
+          "X-Encrypted-Key": data.voice_encrypted_key,
+        },
+        body: await encryptedVoice.arrayBuffer(),
+      });
+
+      if (!voiceDecryptResponse.ok) {
+        throw new Error("Unable to decrypt voice message.");
+      }
+
+      const decryptedVoiceBlob = await voiceDecryptResponse.blob();
+      const decryptedVoiceUrl = URL.createObjectURL(
+        new Blob([decryptedVoiceBlob], { type: "audio/webm" })
+      );
+      setRecordedVoiceBlob(decryptedVoiceBlob);
+      setRecordedVoice(decryptedVoiceUrl);
+    }
+  } else {
+    const { data: voiceUrlData, error: voiceUrlError } =
+      await supabase.storage
+        .from("message-audio")
+        .createSignedUrl(data.voice_path, 3600);
+
+    if (voiceUrlError) {
+      console.error("ERROR CREATING VOICE URL:", voiceUrlError);
+    } else {
+      setRecordedVoice(voiceUrlData.signedUrl);
+    }
+  }
+}
         const { data: existingPhotos, error: existingPhotosError } =
         await supabase
           .from("message_photos")
@@ -775,16 +854,50 @@ cameraStreamRef.current = stream;
           }
         }
         const fileName = `${Date.now()}.webm`;
-        const filePath = `${user.id}/${fileName}`;
-  
-        console.log("VIDEO: SUBIENDO:", filePath);
-  
-        const { error: uploadError } = await supabase.storage
-          .from("message-videos")
-          .upload(filePath, blob, {
-            contentType: "video/webm",
-            upsert: false,
-          });
+const filePath = `${user.id}/${fileName}`;
+
+console.log("VIDEO: ENCRIPTANDO:", filePath);
+
+const encryptionResponse = await fetch("/api/encrypt-file", {
+  method: "POST",
+  headers: {
+    "Content-Type": "video/webm",
+  },
+  body: blob,
+});
+
+if (!encryptionResponse.ok) {
+  console.error("VIDEO ENCRYPTION ERROR");
+  alert("Unable to encrypt the video.");
+  return;
+}
+
+const encryptedVideo = await encryptionResponse.arrayBuffer();
+
+const videoIv = encryptionResponse.headers.get("X-Encryption-IV");
+const videoEncryptedKey =
+  encryptionResponse.headers.get("X-Encrypted-Key");
+const videoEncryptionVersion =
+  encryptionResponse.headers.get("X-Encryption-Version");
+
+if (!videoIv || !videoEncryptedKey || !videoEncryptionVersion) {
+  console.error("VIDEO ENCRYPTION METADATA MISSING");
+  alert("Unable to prepare the encrypted video.");
+  return;
+}
+
+const encryptedBlob = new Blob([encryptedVideo], {
+  type: "application/octet-stream",
+});
+
+console.log("VIDEO: SUBIENDO ENCRIPTADO:", filePath);
+
+const { error: uploadError } = await supabase.storage
+  .from("message-videos")
+  .upload(filePath, encryptedBlob, {
+    contentType: "application/octet-stream",
+    upsert: false,
+  });
   
         if (uploadError) {
           console.error("VIDEO UPLOAD ERROR:", uploadError);
@@ -797,6 +910,9 @@ cameraStreamRef.current = stream;
           url,
           blob,
           filePath,
+          videoIv,
+          videoEncryptedKey,
+          videoEncryptionVersion,
         };
         
         recordedVideoRef.current = newRecordedVideo;
@@ -1345,7 +1461,35 @@ if (!stream) {
 
         return;
       }
-
+      let encryptionData: {
+        ciphertext: string | null;
+        iv: string | null;
+        encryptedKey: string | null;
+      } = {
+        ciphertext: null,
+        iv: null,
+        encryptedKey: null,
+      };
+      
+      if (message.trim()) {
+        const encryptionResponse = await fetch("/api/encryption-key", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            plaintext: message,
+          }),
+        });
+      
+        if (!encryptionResponse.ok) {
+          throw new Error("Unable to generate encryption key.");
+        }
+      
+        encryptionData = await encryptionResponse.json();
+      }
+      
+      
       /* DOCUMENT */
 
       let uploadedDocumentPaths: string[] = [];
@@ -1401,8 +1545,27 @@ if (documentFiles.length > 0) {
 
       let uploadedVoicePath =
         recordedVoicePath;
-
+        let voiceIv: string | null = null;
+        let voiceEncryptedKey: string | null = null;
+        let voiceEncryptionVersion: string | null = null;
       if (recordedVoiceBlob) {
+        
+
+const voiceEncryptionResponse = await fetch("/api/encrypt-file", {
+  method: "POST",
+  body: recordedVoiceBlob,
+});
+
+if (!voiceEncryptionResponse.ok) {
+  throw new Error("Unable to encrypt voice message.");
+}
+
+const encryptedVoiceBlob = await voiceEncryptionResponse.blob();
+
+voiceIv = voiceEncryptionResponse.headers.get("X-Encryption-IV");
+voiceEncryptedKey =
+  voiceEncryptionResponse.headers.get("X-Encrypted-Key");
+voiceEncryptionVersion = "v1";
         const filePath =
           `${user.id}/${Date.now()}.webm`;
 
@@ -1412,7 +1575,7 @@ if (documentFiles.length > 0) {
           .from("message-audio")
           .upload(
             filePath,
-            recordedVoiceBlob,
+            encryptedVoiceBlob,
             {
               contentType:
                 "audio/webm",
@@ -1443,7 +1606,12 @@ if (documentFiles.length > 0) {
 
       let currentMessageId =
         messageId;
-
+        console.log("VOICE UPDATE VALUES:", {
+          uploadedVoicePath,
+          voiceIv,
+          hasVoiceEncryptedKey: Boolean(voiceEncryptedKey),
+          voiceEncryptionVersion,
+        });
       if (messageId) {
         const {
           error,
@@ -1454,7 +1622,10 @@ if (documentFiles.length > 0) {
               recipient.trim(),
             recipient_email:
               recipientEmail.trim(),
-            body: message,
+              body: message.trim() ? encryptionData.ciphertext : "",
+body_iv: message.trim() ? encryptionData.iv : null,
+body_encrypted_key: message.trim() ? encryptionData.encryptedKey : null,
+body_encryption_version: message.trim() ? "v1" : null,
             ...(uploadedDocumentPath
               ? {
                   document_path:
@@ -1468,6 +1639,9 @@ if (documentFiles.length > 0) {
                 : uploadedVoicePath
                   ? {
                       voice_path: uploadedVoicePath,
+                      voice_iv: voiceIv,
+voice_encrypted_key: voiceEncryptedKey,
+voice_encryption_version: voiceEncryptionVersion,
                     }
                   : {}),
           })
@@ -1498,12 +1672,19 @@ if (documentFiles.length > 0) {
               recipient.trim(),
             recipient_email:
               recipientEmail.trim(),
-            body: message,
+              
+              body: message.trim() ? encryptionData.ciphertext : "",
+body_iv: message.trim() ? encryptionData.iv : null,
+body_encrypted_key: message.trim() ? encryptionData.encryptedKey : null,
+body_encryption_version: message.trim() ? "v1" : null,
             status: "draft",
             document_path:
               uploadedDocumentPath,
             voice_path:
               uploadedVoicePath,
+              voice_iv: voiceIv,
+voice_encrypted_key: voiceEncryptedKey,
+voice_encryption_version: voiceEncryptionVersion,
               video_path: recordedVideo?.filePath ?? null,
           })
           .select("id")
@@ -1661,12 +1842,15 @@ if (deleteVideoError) {
 }
 if (recordedVideo) {
   const { error } = await supabase
-    .from("message_videos")
-    .insert({
-      message_id: currentMessageId,
-      user_id: user.id,
-      video_path: recordedVideo.filePath,
-    });
+  .from("message_videos")
+  .insert({
+    message_id: currentMessageId,
+    user_id: user.id,
+    video_path: recordedVideo.filePath,
+    video_iv: recordedVideo.videoIv,
+    video_encrypted_key: recordedVideo.videoEncryptedKey,
+    video_encryption_version: recordedVideo.videoEncryptionVersion,
+  });
 
   if (error) {
     console.error(

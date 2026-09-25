@@ -83,7 +83,7 @@ function ReviewContent() {
       const { data, error } = await supabase
         .from("messages")
         .select(
-          "id, recipient_name, recipient_email, body, status, created_at, document_path, voice_path"
+          "id, recipient_name, recipient_email, body, body_iv, body_encrypted_key, body_encryption_version, status, created_at, document_path, voice_path,voice_iv, voice_encrypted_key, voice_encryption_version"
         )
         .eq("user_id", user.id)
         .eq("id", messageId)
@@ -145,59 +145,146 @@ function ReviewContent() {
             })
           );
 
+          
           // VIDEOS FOR THIS MESSAGE
-          const { data: videos, error: videosError } =
-            await supabase
-              .from("message_videos")
-              .select("video_path")
-              .eq("message_id", message.id);
+const { data: videos, error: videosError } =
+await supabase
+  .from("message_videos")
+  .select(`
+    video_path,
+    video_iv,
+    video_encrypted_key,
+    video_encryption_version
+  `)
+  .eq("message_id", message.id);
 
-          if (videosError) {
-            console.error(
-              "ERROR LOADING MESSAGE VIDEOS:",
-              videosError
-            );
-          }
+if (videosError) {
+console.error(
+  "ERROR LOADING MESSAGE VIDEOS:",
+  videosError
+);
+}
 
-          const videoUrls = await Promise.all(
-            (videos ?? []).map(async (video) => {
-              const {
-                data: signedVideoUrlData,
-                error: signedVideoUrlError,
-              } = await supabase.storage
-                .from("message-videos")
-                .createSignedUrl(video.video_path, 3600);
+const videoUrls = await Promise.all(
+(videos ?? []).map(async (video) => {
+  const {
+    data: signedVideoUrlData,
+    error: signedVideoUrlError,
+  } = await supabase.storage
+    .from("message-videos")
+    .createSignedUrl(video.video_path, 3600);
 
-              if (signedVideoUrlError) {
-                console.error(
-                  "ERROR CREATING VIDEO URL:",
-                  signedVideoUrlError
-                );
-                return null;
-              }
+  if (signedVideoUrlError) {
+    console.error(
+      "ERROR CREATING VIDEO URL:",
+      signedVideoUrlError
+    );
+    return null;
+  }
 
-              return signedVideoUrlData.signedUrl;
-            })
-          );
+  // Historic videos remain unchanged.
+  if (
+    video.video_encryption_version !== "v1" ||
+    !video.video_iv ||
+    !video.video_encrypted_key
+  ) {
+    return signedVideoUrlData.signedUrl;
+  }
+
+  const encryptedVideoResponse = await fetch(
+    signedVideoUrlData.signedUrl
+  );
+
+  if (!encryptedVideoResponse.ok) {
+    console.error("ERROR DOWNLOADING ENCRYPTED VIDEO");
+    return null;
+  }
+
+  const encryptedVideo =
+    await encryptedVideoResponse.arrayBuffer();
+
+  const decryptResponse = await fetch("/api/decrypt-file", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/octet-stream",
+      "X-Encryption-IV": video.video_iv,
+      "X-Encrypted-Key": video.video_encrypted_key,
+    },
+    body: encryptedVideo,
+  });
+
+  if (!decryptResponse.ok) {
+    console.error("ERROR DECRYPTING VIDEO");
+    return null;
+  }
+
+  const decryptedVideo =
+    await decryptResponse.arrayBuffer();
+
+  const decryptedBlob = new Blob([decryptedVideo], {
+    type: "video/webm",
+  });
+
+  return URL.createObjectURL(decryptedBlob);
+})
+);
 
           // VOICE FOR THIS MESSAGE
           let voiceUrl: string | null = null;
 
           if (message.voice_path) {
-            const {
-              data: signedVoiceUrlData,
-              error: signedVoiceUrlError,
-            } = await supabase.storage
-              .from("message-audio")
-              .createSignedUrl(message.voice_path, 3600);
-
-            if (signedVoiceUrlError) {
-              console.error(
-                "ERROR CREATING VOICE URL:",
-                signedVoiceUrlError
-              );
+            if (
+              message.voice_encryption_version === "v1" &&
+              message.voice_iv &&
+              message.voice_encrypted_key
+            ) {
+              const { data: encryptedVoiceData, error: encryptedVoiceError } =
+                await supabase.storage
+                  .from("message-audio")
+                  .download(message.voice_path);
+          
+              if (encryptedVoiceError || !encryptedVoiceData) {
+                console.error(
+                  "ERROR DOWNLOADING ENCRYPTED VOICE:",
+                  encryptedVoiceError
+                );
+              } else {
+                const decryptResponse = await fetch("/api/decrypt-file", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/octet-stream",
+                   "X-Encryption-IV": message.voice_iv,
+                    "x-encrypted-key": message.voice_encrypted_key,
+                  },
+                  body: await encryptedVoiceData.arrayBuffer(),
+                });
+          
+                if (!decryptResponse.ok) {
+                  console.error("ERROR DECRYPTING VOICE");
+                } else {
+                  const decryptedVoiceBlob = await decryptResponse.blob();
+                  
+                  voiceUrl = URL.createObjectURL(
+                    new Blob([decryptedVoiceBlob], {
+                      type: "audio/webm",
+                    })
+                  );
+                }
+              }
             } else {
-              voiceUrl = signedVoiceUrlData.signedUrl;
+              const { data: signedVoiceUrlData, error: signedVoiceUrlError } =
+                await supabase.storage
+                  .from("message-audio")
+                  .createSignedUrl(message.voice_path, 3600);
+          
+              if (signedVoiceUrlError) {
+                console.error(
+                  "ERROR CREATING VOICE URL:",
+                  signedVoiceUrlError
+                );
+              } else {
+                voiceUrl = signedVoiceUrlData.signedUrl;
+              }
             }
           }
 
@@ -236,9 +323,33 @@ function ReviewContent() {
               return signedPhotoUrlData.signedUrl;
             })
           );
-
+          let decryptedBody = message.body;
+          if (
+            message.body_encryption_version === "v1" &&
+            message.body_iv &&
+            message.body_encrypted_key
+          ) {
+            const decryptResponse = await fetch("/api/decrypt-message", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                ciphertext: message.body,
+                iv: message.body_iv,
+                encryptedKey: message.body_encrypted_key,
+              }),
+            });
+            if (!decryptResponse.ok) {
+              throw new Error("Unable to decrypt message.");
+            }
+            
+            const decryptData = await decryptResponse.json();
+            decryptedBody = decryptData.plaintext;
+          }
           return {
             ...message,
+            body: decryptedBody,
             document_url: documentUrl,
             documents: documents.filter(
               (
