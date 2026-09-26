@@ -31,6 +31,7 @@ type RecordedVideo = {
   url: string;
   blob: Blob;
   filePath: string;
+  mimeType?: string;
   videoIv?: string;
   videoEncryptedKey?: string;
   videoEncryptionVersion?: string;
@@ -251,6 +252,131 @@ const [letterSaved, setLetterSaved] = useState(false);
   /* =========================================================
      VIDEO
   ========================================================= */
+
+  const videoFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleVideoFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    let uploadedFilePath: string | null = null;
+
+    try {
+      if (!file) return;
+
+      const isSupported =
+        file.type === "video/mp4" ||
+        file.type === "video/webm" ||
+        (file.type === "" && /\.(mp4|webm)$/i.test(file.name));
+
+      if (!isSupported || /\.mov$/i.test(file.name)) {
+        alert("Please choose an MP4 or WebM video.");
+        return;
+      }
+
+      if (file.size === 0) {
+        alert("Please choose a non-empty video file.");
+        return;
+      }
+
+      const mimeType = file.type === "video/mp4" ||
+        (file.type === "" && /\.mp4$/i.test(file.name))
+        ? "video/mp4"
+        : "video/webm";
+      const extension = mimeType === "video/mp4" ? "mp4" : "webm";
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        alert("There is no authenticated user.");
+        return;
+      }
+
+      const encryptionResponse = await fetch("/api/encrypt-file", {
+        method: "POST",
+        headers: { "Content-Type": mimeType },
+        body: file,
+      });
+
+      if (!encryptionResponse.ok) {
+        throw new Error("Unable to encrypt the video.");
+      }
+
+      const encryptedVideo = await encryptionResponse.arrayBuffer();
+      const videoIv = encryptionResponse.headers.get("X-Encryption-IV");
+      const videoEncryptedKey = encryptionResponse.headers.get("X-Encrypted-Key");
+      const videoEncryptionVersion = encryptionResponse.headers.get("X-Encryption-Version");
+
+      if (!videoIv || !videoEncryptedKey || !videoEncryptionVersion) {
+        throw new Error("Unable to prepare the encrypted video.");
+      }
+
+      const filePath = `${user.id}/${Date.now()}.${extension}`;
+      const encryptedBlob = new Blob([encryptedVideo], {
+        type: "application/octet-stream",
+      });
+      const { error: uploadError } = await supabase.storage
+        .from("message-videos")
+        .upload(filePath, encryptedBlob, {
+          contentType: "application/octet-stream",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error("Unable to upload the video.");
+      }
+      uploadedFilePath = filePath;
+
+      const previousVideo = recordedVideoRef.current;
+      if (previousVideo && previousVideo.filePath !== filePath) {
+        const { error: removePreviousVideoError } = await supabase.storage
+          .from("message-videos")
+          .remove([previousVideo.filePath]);
+
+        if (removePreviousVideoError) {
+          throw new Error(removePreviousVideoError.message);
+        }
+      }
+
+      const newRecordedVideo: RecordedVideo = {
+        id: Date.now(),
+        url: URL.createObjectURL(file),
+        blob: file,
+        filePath,
+        mimeType,
+        videoIv,
+        videoEncryptedKey,
+        videoEncryptionVersion,
+      };
+
+      recordedVideoRef.current = newRecordedVideo;
+      setRecordedVideo(newRecordedVideo);
+      uploadedFilePath = null;
+
+      if (previousVideo) {
+        URL.revokeObjectURL(previousVideo.url);
+      }
+    } catch (error) {
+      if (uploadedFilePath) {
+        try {
+          const { error: cleanupError } = await supabase.storage
+            .from("message-videos")
+            .remove([uploadedFilePath]);
+          if (cleanupError) {
+            console.error("VIDEO UPLOAD CLEANUP ERROR:", cleanupError);
+          }
+        } catch (cleanupError) {
+          console.error("VIDEO UPLOAD CLEANUP ERROR:", cleanupError);
+        }
+      }
+      console.error("VIDEO FILE UPLOAD ERROR:", error);
+      alert(error instanceof Error ? error.message : "Unable to upload the video.");
+    } finally {
+      input.value = "";
+    }
+  };
 
   const [showVideoRecorder, setShowVideoRecorder] =
     useState(false);
@@ -910,6 +1036,7 @@ const { error: uploadError } = await supabase.storage
           url,
           blob,
           filePath,
+          mimeType: "video/webm",
           videoIv,
           videoEncryptedKey,
           videoEncryptionVersion,
@@ -1847,6 +1974,7 @@ if (recordedVideo) {
     message_id: currentMessageId,
     user_id: user.id,
     video_path: recordedVideo.filePath,
+    video_mime_type: recordedVideo.mimeType,
     video_iv: recordedVideo.videoIv,
     video_encrypted_key: recordedVideo.videoEncryptedKey,
     video_encryption_version: recordedVideo.videoEncryptionVersion,
@@ -1863,6 +1991,9 @@ if (recordedVideo) {
     );
 
     return;
+  }
+  if (recordedVideoRef.current?.filePath === recordedVideo.filePath) {
+    recordedVideoRef.current = null;
   }
 }
       }
@@ -2316,13 +2447,7 @@ if (recordedVideo) {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowVideoOptions(
-                      false
-                    );
-
-                    setShowVideoRecorder(
-                      true
-                    );
+                    setShowVideoOptions(true);
                   }}
                   className="rounded-2xl border border-neutral-200 bg-white p-5 text-left transition hover:border-[#0A7BA8] hover:bg-[#F8FCFE]"
                 >
@@ -2796,6 +2921,110 @@ if (recordedVideo) {
 )}
 
       {/* =====================================================
+          VIDEO OPTIONS
+      ===================================================== */}
+
+      {showVideoOptions && (
+        <div className="fixed inset-0 z-[100]">
+
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() =>
+              setShowVideoOptions(false)
+            }
+          />
+
+          <div className="absolute left-1/2 top-1/2 w-[calc(100%-3rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-[32px] bg-[#0F2747] py-12 px-10 shadow-2xl">
+
+            <div className="mx-auto mb-6 h-1.5 w-16 rounded-full bg-neutral-300" />
+
+            <p className="text-xs font-medium tracking-[0.25em] text-[#7DD3FC]">
+              ETERPAX VIDEO
+            </p>
+
+            <h2 className="mt-2 text-2xl font-semibold text-white">
+              Add Video
+            </h2>
+
+            <p className="mt-2 text-neutral-500">
+              How would you like to add your video?
+            </p>
+
+            <div className="mt-8 space-y-3">
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVideoOptions(false);
+                  setShowVideoRecorder(true);
+                }}
+                className="flex w-full items-center justify-between rounded-2xl border border-[#D9E4F2] p-5 text-left hover:border-[#0A7BA8] hover:bg-[#0A7BA8]/5"
+              >
+
+                <div className="flex items-center gap-4">
+
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#0F5C88]/10 text-xl">
+                    🎥
+                  </div>
+
+                  <div>
+                    <p className="font-medium text-white">
+                      Record with ETERPAX
+                    </p>
+
+                    <p className="mt-1 text-sm text-white/60">
+                      Use your camera to record a personal video message.
+                    </p>
+                  </div>
+
+                </div>
+
+                <span className="text-xl text-[#0A7BA8]">
+                  →
+                </span>
+
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVideoOptions(false);
+                  videoFileInputRef.current?.click();
+                }}
+                className="flex w-full items-center justify-between rounded-2xl border border-[#D9E4F2] p-5 text-left hover:border-[#0A7BA8] hover:bg-[#0A7BA8]/5"
+              >
+
+                <div className="flex items-center gap-4">
+
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#0F5C88]/10 text-xl">
+                    🖼️
+                  </div>
+
+                  <div>
+                    <p className="font-medium text-white">
+                      Upload a video
+                    </p>
+
+                    <p className="mt-1 text-sm text-white/60">
+                      Select a video from your device.
+                    </p>
+                  </div>
+
+                </div>
+
+                <span className="text-xl text-[#0A7BA8]">
+                  →
+                </span>
+
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================
           PHOTO OPTIONS
       ===================================================== */}
 
@@ -3022,6 +3251,14 @@ if (recordedVideo) {
       {/* =====================================================
           HIDDEN FILE INPUTS
       ===================================================== */}
+
+      <input
+        ref={videoFileInputRef}
+        type="file"
+        accept="video/mp4,video/webm,.mp4,.webm"
+        className="hidden"
+        onChange={handleVideoFileSelect}
+      />
 
       <input
         id="document-upload"

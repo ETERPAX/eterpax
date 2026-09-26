@@ -39,6 +39,27 @@ type PreviewModal =
   | { type: "documents"; message: Message }
   | null;
 
+function mimeFromVideoPath(videoPath: string): string | null {
+  const lower = videoPath.toLowerCase();
+
+  if (lower.endsWith(".mp4")) {
+    return "video/mp4";
+  }
+
+  if (lower.endsWith(".webm")) {
+    return "video/webm";
+  }
+
+  return null;
+}
+
+function resolvedVideoMimeType(
+  videoMimeType: string | null | undefined,
+  videoPath: string
+): string {
+  return videoMimeType ?? mimeFromVideoPath(videoPath) ?? "video/webm";
+}
+
 function hasLetter(body: string | null) {
   if (!body) return false;
 
@@ -152,6 +173,7 @@ await supabase
   .from("message_videos")
   .select(`
     video_path,
+    video_mime_type,
     video_iv,
     video_encrypted_key,
     video_encryption_version
@@ -222,7 +244,10 @@ const videoUrls = await Promise.all(
     await decryptResponse.arrayBuffer();
 
   const decryptedBlob = new Blob([decryptedVideo], {
-    type: "video/webm",
+    type: resolvedVideoMimeType(
+      video.video_mime_type,
+      video.video_path
+    ),
   });
 
   return URL.createObjectURL(decryptedBlob);
