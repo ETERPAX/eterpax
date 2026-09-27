@@ -128,7 +128,7 @@ function ReviewContent() {
             error: documentRowsError,
           } = await supabase
             .from("message_documents")
-            .select("document_path")
+            .select("document_path, document_iv, document_encrypted_key, document_encryption_version, document_mime_type")
             .eq("message_id", message.id)
             .order("created_at", { ascending: true });
 
@@ -159,10 +159,61 @@ function ReviewContent() {
                 return null;
               }
 
-              return {
-                path: document.document_path,
-                url: signedData.signedUrl,
-              };
+              if (
+                document.document_iv == null &&
+                document.document_encrypted_key == null &&
+                document.document_encryption_version == null
+              ) {
+                return {
+                  path: document.document_path,
+                  url: signedData.signedUrl,
+                };
+              }
+
+              if (
+                document.document_encryption_version !== "v1" ||
+                !document.document_iv ||
+                !document.document_encrypted_key
+              ) {
+                console.error("INVALID DOCUMENT ENCRYPTION METADATA:", document.document_path);
+                return null;
+              }
+
+              try {
+                const encryptedDocumentResponse = await fetch(signedData.signedUrl);
+                if (!encryptedDocumentResponse.ok) {
+                  console.error("ERROR DOWNLOADING ENCRYPTED DOCUMENT");
+                  return null;
+                }
+
+                const encryptedDocument = await encryptedDocumentResponse.arrayBuffer();
+                const decryptResponse = await fetch("/api/decrypt-file", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/octet-stream",
+                    "X-Encryption-IV": document.document_iv,
+                    "X-Encrypted-Key": document.document_encrypted_key,
+                  },
+                  body: encryptedDocument,
+                });
+
+                if (!decryptResponse.ok) {
+                  console.error("ERROR DECRYPTING DOCUMENT");
+                  return null;
+                }
+
+                const decryptedDocument = await decryptResponse.arrayBuffer();
+                const blob = new Blob([decryptedDocument], {
+                  type: document.document_mime_type || "application/octet-stream",
+                });
+                return {
+                  path: document.document_path,
+                  url: URL.createObjectURL(blob),
+                };
+              } catch (error) {
+                console.error("ERROR LOADING ENCRYPTED DOCUMENT:", error);
+                return null;
+              }
             })
           );
 
@@ -317,7 +368,7 @@ const videoUrls = await Promise.all(
           const { data: photos, error: photosError } =
             await supabase
               .from("message_photos")
-              .select("storage_path")
+              .select("storage_path, photo_iv, photo_encrypted_key, photo_encryption_version, photo_mime_type")
               .eq("message_id", message.id)
               .order("sort_order", { ascending: true });
 
@@ -345,7 +396,55 @@ const videoUrls = await Promise.all(
                 return null;
               }
 
-              return signedPhotoUrlData.signedUrl;
+              if (
+                !photo.photo_encryption_version &&
+                !photo.photo_iv &&
+                !photo.photo_encrypted_key
+              ) {
+                return signedPhotoUrlData.signedUrl;
+              }
+
+              if (
+                photo.photo_encryption_version !== "v1" ||
+                !photo.photo_iv ||
+                !photo.photo_encrypted_key
+              ) {
+                console.error("INVALID PHOTO ENCRYPTION METADATA:", photo.storage_path);
+                return null;
+              }
+
+              try {
+                const encryptedPhotoResponse = await fetch(signedPhotoUrlData.signedUrl);
+                if (!encryptedPhotoResponse.ok) {
+                  console.error("ERROR DOWNLOADING ENCRYPTED PHOTO");
+                  return null;
+                }
+
+                const encryptedPhoto = await encryptedPhotoResponse.arrayBuffer();
+                const decryptResponse = await fetch("/api/decrypt-file", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/octet-stream",
+                    "X-Encryption-IV": photo.photo_iv,
+                    "X-Encrypted-Key": photo.photo_encrypted_key,
+                  },
+                  body: encryptedPhoto,
+                });
+
+                if (!decryptResponse.ok) {
+                  console.error("ERROR DECRYPTING PHOTO");
+                  return null;
+                }
+
+                const decryptedPhoto = await decryptResponse.arrayBuffer();
+                const blob = new Blob([decryptedPhoto], {
+                  type: photo.photo_mime_type || "image/jpeg",
+                });
+                return URL.createObjectURL(blob);
+              } catch (error) {
+                console.error("ERROR LOADING ENCRYPTED PHOTO:", error);
+                return null;
+              }
             })
           );
           let decryptedBody = message.body;

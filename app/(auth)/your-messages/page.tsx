@@ -626,7 +626,7 @@ if (data.voice_path) {
         const { data: existingPhotos, error: existingPhotosError } =
         await supabase
           .from("message_photos")
-          .select("storage_path")
+          .select("storage_path, photo_iv, photo_encrypted_key, photo_encryption_version, photo_mime_type")
           .eq("message_id", messageId)
           .order("sort_order", { ascending: true });
       
@@ -641,25 +641,75 @@ if (data.voice_path) {
       } else if (existingPhotos?.length) {
         const signedPhotos = await Promise.all(
           existingPhotos.map(async (photo) => {
-            const { data, error } = await supabase.storage
-              .from("message-photos")
-              .createSignedUrl(photo.storage_path, 3600);
-      
-            if (error) {
-              console.error("ERROR CREATING PHOTO URL:", error);
+            try {
+              const { data, error } = await supabase.storage
+                .from("message-photos")
+                .createSignedUrl(photo.storage_path, 3600);
+
+              if (error) {
+                console.error("ERROR CREATING PHOTO URL:", error);
+                return null;
+              }
+
+              if (
+                !photo.photo_encryption_version &&
+                !photo.photo_iv &&
+                !photo.photo_encrypted_key
+              ) {
+                return { url: data.signedUrl, path: photo.storage_path };
+              }
+
+              if (
+                photo.photo_encryption_version !== "v1" ||
+                !photo.photo_iv ||
+                !photo.photo_encrypted_key
+              ) {
+                console.error("INVALID PHOTO ENCRYPTION METADATA:", photo.storage_path);
+                return null;
+              }
+
+              const encryptedPhotoResponse = await fetch(data.signedUrl);
+              if (!encryptedPhotoResponse.ok) {
+                console.error("ERROR DOWNLOADING ENCRYPTED PHOTO");
+                return null;
+              }
+
+              const encryptedPhoto = await encryptedPhotoResponse.arrayBuffer();
+              const decryptResponse = await fetch("/api/decrypt-file", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/octet-stream",
+                  "X-Encryption-IV": photo.photo_iv,
+                  "X-Encrypted-Key": photo.photo_encrypted_key,
+                },
+                body: encryptedPhoto,
+              });
+
+              if (!decryptResponse.ok) {
+                console.error("ERROR DECRYPTING PHOTO");
+                return null;
+              }
+
+              const decryptedPhoto = await decryptResponse.arrayBuffer();
+              const blob = new Blob([decryptedPhoto], {
+                type: photo.photo_mime_type || "image/jpeg",
+              });
+              return {
+                url: URL.createObjectURL(blob),
+                path: photo.storage_path,
+              };
+            } catch (error) {
+              console.error("ERROR LOADING PHOTO:", error);
               return null;
             }
-      
-            return data.signedUrl;
           })
         );
       
-        setExistingPhotoUrls(
-          signedPhotos.filter((url): url is string => Boolean(url))
+        const loadedPhotos = signedPhotos.filter(
+          (photo): photo is { url: string; path: string } => photo !== null
         );
-        setExistingPhotoPaths(
-          existingPhotos.map((photo) => photo.storage_path)
-        );
+        setExistingPhotoUrls(loadedPhotos.map((photo) => photo.url));
+        setExistingPhotoPaths(loadedPhotos.map((photo) => photo.path));
       }
         setSavedMessages([data]);
 
@@ -1619,7 +1669,13 @@ if (!stream) {
       
       /* DOCUMENT */
 
-      let uploadedDocumentPaths: string[] = [];
+      const uploadedDocuments: {
+        document_path: string;
+        document_iv: string;
+        document_encrypted_key: string;
+        document_encryption_version: string;
+        document_mime_type: string;
+      }[] = [];
 let uploadedDocumentPath = documentPath;
 
 if (documentFiles.length > 0) {
@@ -1632,14 +1688,40 @@ if (documentFiles.length > 0) {
   const filePath =
     `${user.id}/${Date.now()}-${index}-${safeFileName}`;
 
+    const documentMimeType = file.type || "application/octet-stream";
+    const encryptionResponse = await fetch("/api/encrypt-file", {
+      method: "POST",
+      headers: { "Content-Type": documentMimeType },
+      body: file,
+    });
+
+    if (!encryptionResponse.ok) {
+      alert("Unable to encrypt the document.");
+      return;
+    }
+
+    const documentIv = encryptionResponse.headers.get("X-Encryption-IV");
+    const documentEncryptedKey = encryptionResponse.headers.get("X-Encrypted-Key");
+    const documentEncryptionVersion = encryptionResponse.headers.get("X-Encryption-Version");
+
+    if (!documentIv || !documentEncryptedKey || !documentEncryptionVersion) {
+      alert("Unable to prepare the encrypted document.");
+      return;
+    }
+
+    const encryptedDocument = new Blob([await encryptionResponse.arrayBuffer()], {
+      type: "application/octet-stream",
+    });
+
     const {
       error,
     } = await supabase.storage
       .from("message-documents")
       .upload(
         filePath,
-        file,
+        encryptedDocument,
         {
+          contentType: "application/octet-stream",
           upsert: false,
         }
       );
@@ -1657,9 +1739,13 @@ if (documentFiles.length > 0) {
       return;
     }
 
-    uploadedDocumentPaths.push(
-      filePath
-    );
+    uploadedDocuments.push({
+      document_path: filePath,
+      document_iv: documentIv,
+      document_encrypted_key: documentEncryptedKey,
+      document_encryption_version: documentEncryptionVersion,
+      document_mime_type: documentMimeType,
+    });
 
     if (!uploadedDocumentPath) {
       uploadedDocumentPath =
@@ -1839,7 +1925,7 @@ voice_encryption_version: voiceEncryptionVersion,
 
 if (
   currentMessageId &&
-  (uploadedDocumentPaths.length > 0 || documentsToDelete.length > 0)
+  (uploadedDocuments.length > 0 || documentsToDelete.length > 0)
 ) {
   if (documentsToDelete.length > 0) {
     const { error: deleteDocumentStorageError } = await supabase.storage
@@ -1876,14 +1962,13 @@ if (deleteDocumentStorageError) {
     }
   }
   const documentRows =
-    uploadedDocumentPaths.map(
-      (path) => ({
+    uploadedDocuments.map(
+      (document) => ({
         message_id:
           currentMessageId,
         user_id:
           user.id,
-        document_path:
-          path,
+        ...document,
       })
     );
 
@@ -2034,6 +2119,10 @@ if (recordedVideo) {
           message_id: string;
           user_id: string;
           storage_path: string;
+          photo_iv: string;
+          photo_encrypted_key: string;
+          photo_encryption_version: string;
+          photo_mime_type: string;
         }[] = [];
 
         for (
@@ -2042,17 +2131,40 @@ if (recordedVideo) {
           const filePath =
             `${user.id}/${currentMessageId}/${Date.now()}-${file.name}`;
 
+          const photoMimeType = file.type || "image/jpeg";
+          const encryptionResponse = await fetch("/api/encrypt-file", {
+            method: "POST",
+            headers: { "Content-Type": photoMimeType },
+            body: file,
+          });
+
+          if (!encryptionResponse.ok) {
+            alert("Unable to encrypt the photo.");
+            return;
+          }
+
+          const photoIv = encryptionResponse.headers.get("X-Encryption-IV");
+          const photoEncryptedKey = encryptionResponse.headers.get("X-Encrypted-Key");
+          const photoEncryptionVersion = encryptionResponse.headers.get("X-Encryption-Version");
+
+          if (!photoIv || !photoEncryptedKey || !photoEncryptionVersion) {
+            alert("Unable to prepare the encrypted photo.");
+            return;
+          }
+
+          const encryptedPhoto = new Blob([await encryptionResponse.arrayBuffer()], {
+            type: "application/octet-stream",
+          });
+
           const {
             error,
           } = await supabase.storage
             .from("message-photos")
             .upload(
               filePath,
-              file,
+              encryptedPhoto,
               {
-                contentType:
-                  file.type ||
-                  "image/jpeg",
+                contentType: "application/octet-stream",
                 upsert: false,
               }
             );
@@ -2077,6 +2189,10 @@ if (recordedVideo) {
               user.id,
               storage_path: 
               filePath,
+            photo_iv: photoIv,
+            photo_encrypted_key: photoEncryptedKey,
+            photo_encryption_version: photoEncryptionVersion,
+            photo_mime_type: photoMimeType,
           });
         }
         console.log("PHOTO ROWS TO INSERT:", photoRows);
@@ -3055,7 +3171,6 @@ if (recordedVideo) {
             <p className="mt-2 text-neutral-500">
               How would you like to add your photos?
             </p>
-            console.log("EXISTING PHOTOS:", signedPhotos);
             {existingPhotoUrls.length > 0 && (
   <div className="mt-6">
     <p className="mb-3 text-sm font-medium text-white">
