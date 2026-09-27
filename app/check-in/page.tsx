@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowRight, ShieldCheck, Check, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { OnboardingFormLayout } from "@/components/auth/OnboardingFormLayout";
@@ -13,6 +13,8 @@ export default function CheckInPage() {
   const [customDays, setCustomDays] = useState("");
   const [firstName, setFirstName] = useState("your name");
   const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const saveInFlight = useRef(false);
 
   
 
@@ -48,6 +50,42 @@ export default function CheckInPage() {
   
     loadUser();
   }, []);
+
+  const handleContinue = async () => {
+    if (saveInFlight.current) return;
+
+    if (selectedFrequency === null) {
+      alert("Please select a check-in frequency.");
+      return;
+    }
+
+    const frequencyDays = selectedFrequency === 0
+      ? Number(customDays)
+      : selectedFrequency;
+
+    if (!Number.isInteger(frequencyDays) || frequencyDays < 1) {
+      alert("Please enter a valid number of days.");
+      return;
+    }
+
+    saveInFlight.current = true;
+    setSaving(true);
+
+    try {
+      const { error } = await supabase.rpc("save_check_in_configuration", {
+        frequency_days: frequencyDays,
+      });
+
+      if (error) throw error;
+    } catch {
+      alert("We could not save your Check-in settings. Please try again.");
+      saveInFlight.current = false;
+      setSaving(false);
+      return;
+    }
+
+    router.push("/payment");
+  };
 
   const frequencies = [
     {
@@ -313,10 +351,11 @@ export default function CheckInPage() {
           <div className="mx-auto mt-8 max-w-4xl">
             <button
               type="button"
-              onClick={() => router.push("/payment")}
+              onClick={handleContinue}
+              disabled={saving}
               className="inline-flex w-full items-center justify-center gap-3 rounded-full bg-[#0A7BA8] px-7 py-4 text-sm font-medium text-white shadow-xl shadow-black/10 transition hover:bg-[#08698F]"
             >
-              Continue to Protect
+              {saving ? "Saving..." : "Continue to Protect"}
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>

@@ -109,49 +109,15 @@ export default function CheckInSettingsPage() {
 
     setSaving(true);
 
-    const { data: existingCheckIn, error: loadError } = await supabase
-      .from("check_ins")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const { error } = await supabase.rpc("save_check_in_configuration", {
+      frequency_days: frequencyDays,
+    });
 
-    if (loadError) {
-      console.error("ERROR CHECKING EXISTING CHECK-IN:", loadError);
-      alert("We could not load your Check-in settings.");
+    if (error) {
+      console.error("ERROR SAVING CHECK-IN:", error);
+      alert("We could not save your Check-in settings.");
       setSaving(false);
       return;
-    }
-
-    if (existingCheckIn) {
-      const { error } = await supabase
-        .from("check_ins")
-        .update({
-          frequency_days: frequencyDays,
-          enabled: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", user.id);
-
-      if (error) {
-        console.error("ERROR UPDATING CHECK-IN:", error);
-        alert("We could not save your Check-in settings.");
-        setSaving(false);
-        return;
-      }
-    } else {
-      const { error } = await supabase.from("check_ins").insert({
-        user_id: user.id,
-        frequency_days: frequencyDays,
-        enabled: true,
-        missed_count: 0,
-      });
-
-      if (error) {
-        console.error("ERROR CREATING CHECK-IN:", error);
-        alert("We could not save your Check-in settings.");
-        setSaving(false);
-        return;
-      }
     }
 
     alert("Your Check-in settings have been saved.");
