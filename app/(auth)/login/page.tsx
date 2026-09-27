@@ -2,11 +2,13 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -135,15 +137,26 @@ export default function LoginPage() {
                   Password
                 </label>
 
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  className="w-full rounded-xl border border-neutral-200 bg-[#F5F8FC] px-4 py-3.5 text-[#0D2340] outline-none transition focus:border-[#0F5C88] focus:ring-2 focus:ring-[#0F5C88]/10"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    className="w-full rounded-xl border border-neutral-200 bg-[#F5F8FC] pl-4 pr-12 py-3.5 text-[#0D2340] outline-none transition focus:border-[#0F5C88] focus:ring-2 focus:ring-[#0F5C88]/10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    disabled={loading}
+                    className="absolute inset-y-0 right-0 flex items-center rounded-r-xl px-3 text-[#0F5C88] hover:text-[#0D2340] focus-visible:outline-2 focus-visible:outline-[#0F5C88] disabled:opacity-50"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+                  </button>
+                </div>
               </div>
 
               {error && (
