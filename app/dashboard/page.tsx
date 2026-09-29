@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   ArrowRight,
@@ -15,11 +15,39 @@ import {
 
 
 
+type CheckInState = {
+  frequency_days: number;
+  enabled: boolean;
+  status: "scheduled" | "awaiting_response" | "escalation_pending";
+  missed_count: number;
+  last_check_in_at: string | null;
+  next_check_in_at: string | null;
+  response_deadline_at: string | null;
+};
+
+const checkInColumns = "frequency_days, enabled, status, missed_count, last_check_in_at, next_check_in_at, response_deadline_at";
+
+function isCheckInState(value: unknown): value is CheckInState {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.frequency_days === "number"
+    && typeof row.enabled === "boolean"
+    && ["scheduled", "awaiting_response", "escalation_pending"].includes(String(row.status))
+    && typeof row.missed_count === "number"
+    && [row.last_check_in_at, row.next_check_in_at, row.response_deadline_at]
+      .every(value => value === null || (typeof value === "string" && Number.isFinite(Date.parse(value))));
+}
+
 export default function DashboardPage() {
   const [guardianCount, setGuardianCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
-  const [checkInFrequency, setCheckInFrequency] = useState<number | null>(null);
+  const [checkIn, setCheckIn] = useState<CheckInState | null>(null);
+  const [checkInLoading, setCheckInLoading] = useState(true);
+  const [confirmingCheckIn, setConfirmingCheckIn] = useState(false);
+  const confirmInFlight = useRef(false);
+  const [checkInError, setCheckInError] = useState<string | null>(null);
+  const [checkInSuccess, setCheckInSuccess] = useState(false);
   const [protectionActive, setProtectionActive] = useState(false);
   const [messages, setMessages] = useState<
   {
@@ -55,28 +83,32 @@ export default function DashboardPage() {
       setGuardianCount(count ?? 0);
     };
     const loadCheckIn = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-    
-      if (!user) {
-        setCheckInFrequency(null);
-        return;
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          setCheckInError("Please sign in to confirm your Check-in.");
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("check_ins")
+          .select(checkInColumns)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (error || (data && !isCheckInState(data))) {
+          throw error ?? new Error("Unexpected Check-in state");
+        }
+
+        setCheckIn(data);
+      } catch {
+        setCheckInError("We could not load your Check-in. Please refresh to try again.");
+      } finally {
+        setCheckInLoading(false);
       }
-    
-      const { data, error } = await supabase
-        .from("check_ins")
-        .select("frequency_days")
-        .eq("user_id", user.id)
-        .maybeSingle();
-    
-      if (error) {
-        console.error("ERROR LOADING CHECK-IN:", error);
-        setCheckInFrequency(null);
-        return;
-      }
-    
-      setCheckInFrequency(data?.frequency_days ?? null);
     };
     
     loadGuardianCount();
@@ -150,6 +182,49 @@ setMessages(messageData ?? []);
 
     loadMessageCount();
   }, []);
+
+  const confirmCheckIn = async () => {
+    if (confirmInFlight.current || checkInLoading || !checkIn) return;
+    confirmInFlight.current = true;
+    setConfirmingCheckIn(true);
+    setCheckInError(null);
+    setCheckInSuccess(false);
+    let confirmationAccepted = false;
+
+    try {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setCheckInError("Please sign in again to confirm your Check-in.");
+        return;
+      }
+
+      const { data, error } = await supabase.rpc("confirm_check_in");
+      if (error) throw error;
+      confirmationAccepted = true;
+
+      let updated: unknown = Array.isArray(data) && data.length === 1 ? data[0] : data;
+      if (!isCheckInState(updated)) {
+        const { data: refreshed, error: refreshError } = await supabase
+          .from("check_ins")
+          .select(checkInColumns)
+          .eq("user_id", user.id)
+          .single();
+        if (refreshError) throw refreshError;
+        updated = refreshed;
+      }
+      if (!isCheckInState(updated)) throw new Error("Unexpected Check-in state");
+
+      setCheckIn(updated);
+      setCheckInSuccess(true);
+    } catch {
+      setCheckInError(confirmationAccepted
+        ? "Your request completed, but we could not refresh your Check-in. Please reload to verify its state."
+        : "We could not confirm your Check-in. Please try again. If the connection was interrupted, reload to verify its state.");
+    } finally {
+      confirmInFlight.current = false;
+      setConfirmingCheckIn(false);
+    }
+  };
 
   const hasMessages = messageCount > 0;
   const hasGuardians = guardianCount > 0;
@@ -317,8 +392,7 @@ setMessages(messageData ?? []);
                   </Link>
 
                   {/* Check-in */}
-                  <Link
-                   href="/check-in-settings"
+                  <div
                     className="group rounded-[26px] border border-white/60 bg-white/90 p-6 shadow-xl backdrop-blur-md transition hover:-translate-y-1 hover:bg-white"
                   >
                     <div className="flex items-start justify-between">
@@ -332,7 +406,7 @@ setMessages(messageData ?? []);
                     </p>
 
                     <h3 className="mt-2 text-xl font-medium text-[#0D2340]">
-                    {checkInFrequency ? `Every ${checkInFrequency} days` : "Not configured"}
+                    {checkInLoading ? "Loading..." : checkIn ? `Every ${checkIn.frequency_days} days` : checkInError ? "Unavailable" : "Not configured"}
                     </h3>
 
                     <p className="mt-2 text-sm leading-6 text-neutral-500">
@@ -340,11 +414,33 @@ setMessages(messageData ?? []);
                       check-in schedule.
                     </p>
 
-                    <div className="mt-5 flex items-center text-sm font-medium text-[#17375E]">
+                    {checkIn && (
+                      <div className="mt-3 space-y-1 text-sm leading-6 text-neutral-500">
+                        <p>{!checkIn.enabled ? "Check-ins paused" : checkIn.status === "scheduled" ? "Scheduled" : checkIn.status === "awaiting_response" ? "Awaiting your response" : "Escalation pending"}</p>
+                        <p>Missed check-ins: {checkIn.missed_count}</p>
+                        {checkIn.last_check_in_at && <p>Last confirmed: {new Date(checkIn.last_check_in_at).toLocaleString()}</p>}
+                        {checkIn.enabled && checkIn.next_check_in_at && <p>Next check-in: {new Date(checkIn.next_check_in_at).toLocaleString()}</p>}
+                        {checkIn.enabled && checkIn.response_deadline_at && <p>Respond by: {new Date(checkIn.response_deadline_at).toLocaleString()}</p>}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={confirmCheckIn}
+                      disabled={checkInLoading || !checkIn || confirmingCheckIn}
+                      aria-busy={confirmingCheckIn}
+                      className="mt-5 inline-flex items-center justify-center rounded-full bg-[#0A7BA8] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#08698F] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {confirmingCheckIn ? "Confirming..." : "I'm OK"}
+                    </button>
+                    {checkInSuccess && <p role="status" className="mt-3 text-sm text-[#0A7BA8]">Thank you. Your Check-in is confirmed.{checkIn && !checkIn.enabled ? " Check-ins remain paused." : ""}</p>}
+                    {checkInError && <p role="alert" className="mt-3 text-sm text-red-700">{checkInError}</p>}
+
+                    <Link href="/check-in-settings" className="mt-5 flex items-center text-sm font-medium text-[#17375E]">
                     Manage Check-in
                       <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />
-                    </div>
-                  </Link>
+                    </Link>
+                  </div>
 
                   {/* Protection */}
                   <div className="rounded-[26px] border border-white/60 bg-white/90 p-6 shadow-xl backdrop-blur-md">
