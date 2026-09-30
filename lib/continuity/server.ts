@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { deliverContinuityEmails } from "./email";
 
 const projectHosts = {
   test: "xkojvvppactsabnewezb.supabase.co",
@@ -73,6 +74,7 @@ export async function invokeContinuityEngine(request: Request): Promise<Response
     return reply(503, { success: false, error: "Scheduler configuration invalid" });
   }
 
+  const deliveryStopAt = Date.now() + 45_000;
   try {
     const supabase = createClient(target.origin, secretKey, {
       auth: { persistSession: false, autoRefreshToken: false },
@@ -82,7 +84,14 @@ export async function invokeContinuityEngine(request: Request): Promise<Response
       return reply(502, { success: false, error: "Engine invocation failed" });
     }
 
-    return reply(200, { success: true, transitions: data.length });
+    // Engine success is independent of delivery. Never rerun it on email failure.
+    try {
+      const delivery = await deliverContinuityEmails(supabase, environment, deliveryStopAt);
+      return reply(200, { success: true, transitions: data.length, delivery });
+    } catch {
+      return reply(200, { success: true, transitions: data.length,
+        delivery: { success: false, code: "DELIVERY_FAILED" } });
+    }
   } catch {
     return reply(502, { success: false, error: "Engine invocation failed" });
   }
