@@ -180,21 +180,22 @@ function ReviewContent() {
               }
 
               try {
-                const encryptedDocumentResponse = await fetch(signedData.signedUrl);
-                if (!encryptedDocumentResponse.ok) {
-                  console.error("ERROR DOWNLOADING ENCRYPTED DOCUMENT");
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                if (sessionError || !session?.access_token) {
+                  console.error("Please sign in again to decrypt your document.");
                   return null;
                 }
-
-                const encryptedDocument = await encryptedDocumentResponse.arrayBuffer();
                 const decryptResponse = await fetch("/api/decrypt-file", {
                   method: "POST",
                   headers: {
-                    "Content-Type": "application/octet-stream",
-                    "X-Encryption-IV": document.document_iv,
-                    "X-Encrypted-Key": document.document_encrypted_key,
+                    Authorization: `Bearer ${session.access_token}`,
+                    "Content-Type": "application/json",
                   },
-                  body: encryptedDocument,
+                  body: JSON.stringify({
+                    type: "document",
+                    messageId: message.id,
+                    documentPath: document.document_path,
+                  }),
                 });
 
                 if (!decryptResponse.ok) {
@@ -314,25 +315,19 @@ const videoUrls = await Promise.all(
               message.voice_iv &&
               message.voice_encrypted_key
             ) {
-              const { data: encryptedVoiceData, error: encryptedVoiceError } =
-                await supabase.storage
-                  .from("message-audio")
-                  .download(message.voice_path);
+              const { data: { session }, error: sessionError } =
+                await supabase.auth.getSession();
           
-              if (encryptedVoiceError || !encryptedVoiceData) {
-                console.error(
-                  "ERROR DOWNLOADING ENCRYPTED VOICE:",
-                  encryptedVoiceError
-                );
+              if (sessionError || !session?.access_token) {
+                console.error("Please sign in again to decrypt your voice message.");
               } else {
                 const decryptResponse = await fetch("/api/decrypt-file", {
                   method: "POST",
                   headers: {
-                    "Content-Type": "application/octet-stream",
-                   "X-Encryption-IV": message.voice_iv,
-                    "x-encrypted-key": message.voice_encrypted_key,
+                    Authorization: `Bearer ${session.access_token}`,
+                    "Content-Type": "application/json",
                   },
-                  body: await encryptedVoiceData.arrayBuffer(),
+                  body: JSON.stringify({ type: "voice", messageId: message.id }),
                 });
           
                 if (!decryptResponse.ok) {
@@ -453,15 +448,21 @@ const videoUrls = await Promise.all(
             message.body_iv &&
             message.body_encrypted_key
           ) {
+            const {
+              data: { session },
+              error: sessionError,
+            } = await supabase.auth.getSession();
+            if (sessionError || !session?.access_token) {
+              throw new Error("Please sign in again to decrypt your message.");
+            }
             const decryptResponse = await fetch("/api/decrypt-message", {
               method: "POST",
               headers: {
+                Authorization: `Bearer ${session.access_token}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                ciphertext: message.body,
-                iv: message.body_iv,
-                encryptedKey: message.body_encrypted_key,
+                messageId: message.id,
               }),
             });
             if (!decryptResponse.ok) {

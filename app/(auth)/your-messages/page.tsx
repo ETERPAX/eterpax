@@ -496,15 +496,21 @@ voice_encryption_version,
             data.body_iv &&
             data.body_encrypted_key
           ) {
+            const {
+              data: { session },
+              error: sessionError,
+            } = await supabase.auth.getSession();
+            if (sessionError || !session?.access_token) {
+              throw new Error("Please sign in again to decrypt your message.");
+            }
             const decryptResponse = await fetch("/api/decrypt-message", {
               method: "POST",
               headers: {
+                Authorization: `Bearer ${session.access_token}`,
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                ciphertext: data.body,
-                iv: data.body_iv,
-                encryptedKey: data.body_encrypted_key,
+                messageId: data.id,
               }),
             });
             if (!decryptResponse.ok) {
@@ -576,27 +582,19 @@ if (data.voice_path) {
     data.voice_iv &&
     data.voice_encrypted_key
   ) {
-    const { data: encryptedVoice, error: voiceDownloadError } =
-      await supabase.storage
-        .from("message-audio")
-        .download(data.voice_path);
+    const { data: { session }, error: sessionError } =
+      await supabase.auth.getSession();
 
-    if (voiceDownloadError || !encryptedVoice) {
-      console.error("ERROR DOWNLOADING ENCRYPTED VOICE:", voiceDownloadError);
+    if (sessionError || !session?.access_token) {
+      console.error("Please sign in again to decrypt your voice message.");
     } else {
-      const voiceFormData = new FormData();
-      voiceFormData.append("file", encryptedVoice);
-      voiceFormData.append("iv", data.voice_iv);
-      voiceFormData.append("encryptedKey", data.voice_encrypted_key);
-
       const voiceDecryptResponse = await fetch("/api/decrypt-file", {
         method: "POST",
         headers: {
-          "Content-Type": "application/octet-stream",
-          "X-Encryption-IV": data.voice_iv,
-          "X-Encrypted-Key": data.voice_encrypted_key,
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
         },
-        body: await encryptedVoice.arrayBuffer(),
+        body: JSON.stringify({ type: "voice", messageId: data.id }),
       });
 
       if (!voiceDecryptResponse.ok) {
