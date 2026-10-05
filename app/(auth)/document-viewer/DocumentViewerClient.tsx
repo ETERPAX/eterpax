@@ -13,12 +13,62 @@ pdfjs.GlobalWorkerOptions.workerSrc =
 
 export default function DocumentViewerPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-
   const documentUrl = searchParams.get("url");
+  const filename = (searchParams.get("filename") || "document")
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .replace(/^\.+/, "") || "document";
+
+  return <DocumentViewer key={documentUrl} documentUrl={documentUrl} filename={filename} />;
+}
+
+function DocumentViewer({ documentUrl, filename }: { documentUrl: string | null; filename: string }) {
+  const router = useRouter();
+  const [resolved, setResolved] = useState<{ url: string; mime: string; text: string } | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageWidth, setPageWidth] = useState(800);
+
+  useEffect(() => {
+    if (!documentUrl) return;
+    const controller = new AbortController();
+    let ownedUrl: string | undefined;
+
+    const load = async () => {
+      try {
+        const url = new URL(documentUrl);
+        const localBlob = url.protocol === "blob:" && url.origin === window.location.origin;
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        // Retain only the existing signed document-bucket URL flow for legacy files.
+        const legacyDocument = supabaseUrl && url.origin === new URL(supabaseUrl).origin &&
+          url.pathname.startsWith("/storage/v1/object/sign/message-documents/") &&
+          Boolean(url.searchParams.get("token"));
+        if (url.username || url.password || (!localBlob && !legacyDocument)) {
+          throw new Error("Unsupported document URL");
+        }
+        const response = await fetch(url.href, {
+          signal: controller.signal,
+          credentials: "omit",
+          redirect: "error",
+        });
+        if (!response.ok) throw new Error("Unable to load document");
+        const blob = await response.blob();
+        const mime = blob.type.split(";")[0].trim().toLowerCase();
+        const text = mime === "text/plain" ? await blob.text() : "";
+        if (controller.signal.aborted) return;
+        // Review owns its blob URL. Only URLs created here are revoked here.
+        const resolvedUrl = localBlob ? documentUrl : (ownedUrl = URL.createObjectURL(blob));
+        setResolved({ url: resolvedUrl, mime, text });
+      } catch {
+        if (!controller.signal.aborted) setLoadError(true);
+      }
+    };
+    void load();
+    return () => {
+      controller.abort();
+      if (ownedUrl) URL.revokeObjectURL(ownedUrl);
+    };
+  }, [documentUrl]);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -66,17 +116,30 @@ export default function DocumentViewerPage() {
         </div>
       </section>
 
-      {/* PDF */}
+      {/* Render only formats supported by the selected viewer. */}
       <section className="px-4 pb-10 md:px-10">
         <div className="mx-auto max-w-6xl">
-          {!documentUrl ? (
+          {!documentUrl || loadError ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
               <p className="text-slate-500">Document unavailable.</p>
+            </div>
+          ) : !resolved ? (
+            <p className="p-10 text-center text-slate-500">Loading secure document...</p>
+          ) : resolved.mime === "text/plain" ? (
+            <pre className="max-h-[75vh] overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-white p-6 text-sm text-slate-800">
+              {resolved.text}
+            </pre>
+          ) : resolved.mime !== "application/pdf" ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
+              <p className="text-slate-500">Preview unavailable for this format.</p>
+              <a href={resolved.url} download={filename} className="mt-4 inline-block text-[#0A7BA8] underline">
+                Download {filename}
+              </a>
             </div>
           ) : (
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm">
               <Document
-                file={documentUrl}
+                file={resolved.url}
                 onLoadSuccess={({ numPages }) => {
                   setNumPages(numPages);
                 }}

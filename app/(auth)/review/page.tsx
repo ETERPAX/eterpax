@@ -203,10 +203,7 @@ function ReviewContent() {
                   return null;
                 }
 
-                const decryptedDocument = await decryptResponse.arrayBuffer();
-                const blob = new Blob([decryptedDocument], {
-                  type: document.document_mime_type || "application/octet-stream",
-                });
+                const blob = await decryptResponse.blob();
                 return {
                   path: document.document_path,
                   url: URL.createObjectURL(blob),
@@ -915,6 +912,11 @@ const videoUrls = await Promise.all(
                           router.push(
                             `/document-viewer?url=${encodeURIComponent(
                               document.url
+                            )}&filename=${encodeURIComponent(
+                              (document.path.split("/").pop() || "document")
+                                .replace(/^\d+-\d+-/, "")
+                                .replace(/[^a-zA-Z0-9._-]/g, "_")
+                                .replace(/^\.+/, "") || "document"
                             )}`
                           )
                         }
