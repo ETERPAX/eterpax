@@ -12,6 +12,9 @@ export async function POST(request: Request) {
     if (payload && typeof payload === "object" && "type" in payload && payload.type === "photo") {
       return decryptPhoto(request);
     }
+    if (payload && typeof payload === "object" && "type" in payload && payload.type === "video") {
+      return decryptVideo(request);
+    }
     return decryptVoice(request);
   }
   // Temporary compatibility for legacy photo/video callers.
@@ -322,5 +325,94 @@ async function decryptPhoto(request: Request) {
     });
   } catch {
     return NextResponse.json({ error: "Unable to decrypt photo" }, { status: 500 });
+  }
+}
+
+async function decryptVideo(request: Request) {
+  const bearer = request.headers.get("authorization")?.match(/^Bearer (\S+)$/i);
+  if (!bearer) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { headers: { Authorization: `Bearer ${bearer[1]}` } },
+      }
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(bearer[1]);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload: unknown = await request.json().catch(() => null);
+    if (
+      !payload || typeof payload !== "object" || Array.isArray(payload) ||
+      !("type" in payload) || payload.type !== "video" ||
+      !("messageId" in payload) || typeof payload.messageId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.messageId) ||
+      Object.keys(payload).some((key) => !["type", "messageId"].includes(key)) ||
+      request.headers.has("X-Encryption-IV") || request.headers.has("X-Encrypted-Key")
+    ) {
+      return NextResponse.json({ error: "Invalid video request" }, { status: 400 });
+    }
+
+    const { data: message, error: messageError } = await supabase
+      .from("messages")
+      .select("id, user_id")
+      .eq("id", payload.messageId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (messageError) {
+      return NextResponse.json({ error: "Unable to load message" }, { status: 500 });
+    }
+    if (!message || message.id !== payload.messageId || message.user_id !== user.id) {
+      return NextResponse.json({ error: "Message not found" }, { status: 404 });
+    }
+
+    const { data: video, error: videoError } = await supabase
+      .from("message_videos")
+      .select("message_id, user_id, video_path, video_iv, video_encrypted_key, video_encryption_version, video_mime_type")
+      .eq("message_id", message.id)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (videoError) {
+      return NextResponse.json({ error: "Unable to load video" }, { status: 500 });
+    }
+    if (!video || video.user_id !== user.id || video.message_id !== message.id) {
+      return NextResponse.json({ error: "Video not found" }, { status: 404 });
+    }
+    if (
+      typeof video.video_path !== "string" || !video.video_path.trim() ||
+      video.video_encryption_version !== "v1" ||
+      typeof video.video_iv !== "string" || !video.video_iv.trim() ||
+      typeof video.video_encrypted_key !== "string" || !video.video_encrypted_key.trim()
+    ) {
+      return NextResponse.json({ error: "Invalid encrypted video data" }, { status: 422 });
+    }
+
+    const { data: encryptedVideo, error: downloadError } = await supabase.storage
+      .from("message-videos")
+      .download(video.video_path);
+    if (downloadError || !encryptedVideo || encryptedVideo.size === 0) {
+      return NextResponse.json({ error: "Unable to load video file" }, { status: 500 });
+    }
+
+    const plaintextKey = await decryptDataKey(Buffer.from(video.video_encrypted_key, "base64"));
+    const aesKey = await importAesKey(plaintextKey);
+    const plaintext = await decryptBytes(await encryptedVideo.arrayBuffer(), video.video_iv, aesKey);
+    return new Response(plaintext, {
+      headers: {
+        "Content-Type": typeof video.video_mime_type === "string" &&
+          /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i.test(video.video_mime_type.trim())
+          ? video.video_mime_type.trim() : "application/octet-stream",
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch {
+    return NextResponse.json({ error: "Unable to decrypt video" }, { status: 500 });
   }
 }

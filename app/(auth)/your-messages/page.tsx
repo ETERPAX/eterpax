@@ -548,34 +548,59 @@ decryptedBody = decryptData.plaintext;
           );
         }
         setRecordedVoicePath(data.voice_path ?? null);
-        const { data: existingVideos, error: existingVideosError } =
-  await supabase
-    .from("message_videos")
-    .select("video_path")
-    .eq("message_id", messageId)
-    .order("created_at", { ascending: true });
+        const { data: existingVideos, error: existingVideosError } = await supabase
+          .from("message_videos")
+          .select("video_path, video_iv, video_encrypted_key, video_encryption_version")
+          .eq("message_id", messageId)
+          .order("created_at", { ascending: true });
 
-if (existingVideosError) {
-  console.error(
-    "ERROR LOADING MESSAGE VIDEOS:",
-    existingVideosError
-  );
-} else if (existingVideos?.length) {
-  const { data: videoUrlData, error: videoUrlError } =
-    await supabase.storage
-      .from("message-videos")
-      .createSignedUrl(existingVideos[0].video_path, 3600);
-
-  if (videoUrlError) {
-    console.error(
-      "ERROR CREATING VIDEO URL:",
-      videoUrlError
-    );
-  } else {
-    setExistingVideoUrl(videoUrlData.signedUrl);
-    setExistingVideoPath(data.video_path);
-  }
-}
+        setExistingVideoUrl(null);
+        if (existingVideosError || (existingVideos?.length ?? 0) > 1) {
+          console.error("Unable to load an unambiguous saved video.");
+        } else if (existingVideos?.length === 1) {
+          const video = existingVideos[0];
+          try {
+            if (typeof video.video_path !== "string" || !video.video_path.trim()) {
+              throw new Error("Invalid video path.");
+            }
+            if (
+              video.video_encryption_version == null &&
+              video.video_iv == null &&
+              video.video_encrypted_key == null
+            ) {
+              const { data: signedVideo, error } = await supabase.storage
+                .from("message-videos")
+                .createSignedUrl(video.video_path, 3600);
+              if (error) throw new Error("Unable to load legacy video.");
+              setExistingVideoUrl(signedVideo.signedUrl);
+            } else {
+              if (
+                video.video_encryption_version !== "v1" ||
+                typeof video.video_iv !== "string" || !video.video_iv.trim() ||
+                typeof video.video_encrypted_key !== "string" || !video.video_encrypted_key.trim()
+              ) {
+                throw new Error("Invalid encrypted video metadata.");
+              }
+              const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+              if (sessionError || !session?.access_token) {
+                throw new Error("Please sign in again to decrypt your video.");
+              }
+              const response = await fetch("/api/decrypt-file", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${session.access_token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ type: "video", messageId }),
+              });
+              if (!response.ok) throw new Error("Unable to decrypt video.");
+              setExistingVideoUrl(URL.createObjectURL(await response.blob()));
+            }
+            setExistingVideoPath(video.video_path);
+          } catch {
+            console.error("Unable to load saved video.");
+          }
+        }
 if (data.voice_path) {
   if (
     data.voice_encryption_version === "v1" &&

@@ -39,27 +39,6 @@ type PreviewModal =
   | { type: "documents"; message: Message }
   | null;
 
-function mimeFromVideoPath(videoPath: string): string | null {
-  const lower = videoPath.toLowerCase();
-
-  if (lower.endsWith(".mp4")) {
-    return "video/mp4";
-  }
-
-  if (lower.endsWith(".webm")) {
-    return "video/webm";
-  }
-
-  return null;
-}
-
-function resolvedVideoMimeType(
-  videoMimeType: string | null | undefined,
-  videoPath: string
-): string {
-  return videoMimeType ?? mimeFromVideoPath(videoPath) ?? "video/webm";
-}
-
 function hasLetter(body: string | null) {
   if (!body) return false;
 
@@ -217,91 +196,57 @@ function ReviewContent() {
 
           
           // VIDEOS FOR THIS MESSAGE
-const { data: videos, error: videosError } =
-await supabase
-  .from("message_videos")
-  .select(`
-    video_path,
-    video_mime_type,
-    video_iv,
-    video_encrypted_key,
-    video_encryption_version
-  `)
-  .eq("message_id", message.id);
+          const { data: videos, error: videosError } = await supabase
+            .from("message_videos")
+            .select("video_path, video_iv, video_encrypted_key, video_encryption_version")
+            .eq("message_id", message.id);
 
-if (videosError) {
-console.error(
-  "ERROR LOADING MESSAGE VIDEOS:",
-  videosError
-);
-}
-
-const videoUrls = await Promise.all(
-(videos ?? []).map(async (video) => {
-  const {
-    data: signedVideoUrlData,
-    error: signedVideoUrlError,
-  } = await supabase.storage
-    .from("message-videos")
-    .createSignedUrl(video.video_path, 3600);
-
-  if (signedVideoUrlError) {
-    console.error(
-      "ERROR CREATING VIDEO URL:",
-      signedVideoUrlError
-    );
-    return null;
-  }
-
-  // Historic videos remain unchanged.
-  if (
-    video.video_encryption_version !== "v1" ||
-    !video.video_iv ||
-    !video.video_encrypted_key
-  ) {
-    return signedVideoUrlData.signedUrl;
-  }
-
-  const encryptedVideoResponse = await fetch(
-    signedVideoUrlData.signedUrl
-  );
-
-  if (!encryptedVideoResponse.ok) {
-    console.error("ERROR DOWNLOADING ENCRYPTED VIDEO");
-    return null;
-  }
-
-  const encryptedVideo =
-    await encryptedVideoResponse.arrayBuffer();
-
-  const decryptResponse = await fetch("/api/decrypt-file", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/octet-stream",
-      "X-Encryption-IV": video.video_iv,
-      "X-Encrypted-Key": video.video_encrypted_key,
-    },
-    body: encryptedVideo,
-  });
-
-  if (!decryptResponse.ok) {
-    console.error("ERROR DECRYPTING VIDEO");
-    return null;
-  }
-
-  const decryptedVideo =
-    await decryptResponse.arrayBuffer();
-
-  const decryptedBlob = new Blob([decryptedVideo], {
-    type: resolvedVideoMimeType(
-      video.video_mime_type,
-      video.video_path
-    ),
-  });
-
-  return URL.createObjectURL(decryptedBlob);
-})
-);
+          const videoUrls: string[] = [];
+          if (videosError || (videos?.length ?? 0) > 1) {
+            console.error("Unable to load an unambiguous video.");
+          } else if (videos?.length === 1) {
+            const video = videos[0];
+            try {
+              if (typeof video.video_path !== "string" || !video.video_path.trim()) {
+                throw new Error("Invalid video path.");
+              }
+              if (
+                video.video_encryption_version == null &&
+                video.video_iv == null &&
+                video.video_encrypted_key == null
+              ) {
+                const { data: signedVideo, error } = await supabase.storage
+                  .from("message-videos")
+                  .createSignedUrl(video.video_path, 3600);
+                if (error) throw new Error("Unable to load legacy video.");
+                videoUrls.push(signedVideo.signedUrl);
+              } else {
+                if (
+                  video.video_encryption_version !== "v1" ||
+                  typeof video.video_iv !== "string" || !video.video_iv.trim() ||
+                  typeof video.video_encrypted_key !== "string" || !video.video_encrypted_key.trim()
+                ) {
+                  throw new Error("Invalid encrypted video metadata.");
+                }
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                if (sessionError || !session?.access_token) {
+                  throw new Error("Please sign in again to decrypt your video.");
+                }
+                const response = await fetch("/api/decrypt-file", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${session.access_token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({ type: "video", messageId: message.id }),
+                });
+                if (!response.ok) throw new Error("Unable to decrypt video.");
+                videoUrls.push(URL.createObjectURL(await response.blob()));
+              }
+            } catch {
+              console.error("Unable to load video.");
+            }
+          }
 
           // VOICE FOR THIS MESSAGE
           let voiceUrl: string | null = null;
