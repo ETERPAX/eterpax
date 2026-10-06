@@ -1,9 +1,28 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { generateDataKey } from "@/lib/kms";
 import { importAesKey, encryptBytes } from "@/lib/encryption";
 
 export async function POST(request: Request) {
+  const bearer = request.headers.get("authorization")?.match(/^Bearer (\S+)$/i);
+  if (!bearer) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { headers: { Authorization: `Bearer ${bearer[1]}` } },
+      }
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(bearer[1]);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const fileData = await request.arrayBuffer();
 
     if (fileData.byteLength === 0) {

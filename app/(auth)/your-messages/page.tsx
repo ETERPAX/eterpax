@@ -294,9 +294,15 @@ const [letterSaved, setLetterSaved] = useState(false);
         return;
       }
 
+      const { data: { session: encryptionSession }, error: encryptionSessionError } = await supabase.auth.getSession();
+      if (encryptionSessionError || !encryptionSession?.access_token) {
+        alert("Please sign in again to encrypt your attachment.");
+        return;
+      }
+
       const encryptionResponse = await fetch("/api/encrypt-file", {
         method: "POST",
-        headers: { "Content-Type": mimeType },
+        headers: { "Content-Type": mimeType, Authorization: `Bearer ${encryptionSession.access_token}` },
         body: file,
       });
 
@@ -1049,10 +1055,17 @@ const filePath = `${user.id}/${fileName}`;
 
 console.log("VIDEO: ENCRIPTANDO:", filePath);
 
+const { data: { session: encryptionSession }, error: encryptionSessionError } = await supabase.auth.getSession();
+if (encryptionSessionError || !encryptionSession?.access_token) {
+  alert("Please sign in again to encrypt your attachment.");
+  return;
+}
+
 const encryptionResponse = await fetch("/api/encrypt-file", {
   method: "POST",
   headers: {
     "Content-Type": "video/webm",
+    Authorization: `Bearer ${encryptionSession.access_token}`,
   },
   body: blob,
 });
@@ -1704,9 +1717,15 @@ if (documentFiles.length > 0) {
     `${user.id}/${Date.now()}-${index}-${safeFileName}`;
 
     const documentMimeType = file.type || "application/octet-stream";
+    const { data: { session: encryptionSession }, error: encryptionSessionError } = await supabase.auth.getSession();
+    if (encryptionSessionError || !encryptionSession?.access_token) {
+      alert("Please sign in again to encrypt your attachment.");
+      return;
+    }
+
     const encryptionResponse = await fetch("/api/encrypt-file", {
       method: "POST",
-      headers: { "Content-Type": documentMimeType },
+      headers: { "Content-Type": documentMimeType, Authorization: `Bearer ${encryptionSession.access_token}` },
       body: file,
     });
 
@@ -1779,8 +1798,15 @@ if (documentFiles.length > 0) {
       if (recordedVoiceBlob) {
         
 
+const { data: { session: encryptionSession }, error: encryptionSessionError } = await supabase.auth.getSession();
+if (encryptionSessionError || !encryptionSession?.access_token) {
+  alert("Please sign in again to encrypt your attachment.");
+  return;
+}
+
 const voiceEncryptionResponse = await fetch("/api/encrypt-file", {
   method: "POST",
+  headers: { Authorization: `Bearer ${encryptionSession.access_token}` },
   body: recordedVoiceBlob,
 });
 
@@ -2147,9 +2173,15 @@ if (recordedVideo) {
             `${user.id}/${currentMessageId}/${Date.now()}-${file.name}`;
 
           const photoMimeType = file.type || "image/jpeg";
+          const { data: { session: encryptionSession }, error: encryptionSessionError } = await supabase.auth.getSession();
+          if (encryptionSessionError || !encryptionSession?.access_token) {
+            alert("Please sign in again to encrypt your attachment.");
+            return;
+          }
+
           const encryptionResponse = await fetch("/api/encrypt-file", {
             method: "POST",
-            headers: { "Content-Type": photoMimeType },
+            headers: { "Content-Type": photoMimeType, Authorization: `Bearer ${encryptionSession.access_token}` },
             body: file,
           });
 
