@@ -640,47 +640,42 @@ if (data.voice_path) {
         const signedPhotos = await Promise.all(
           existingPhotos.map(async (photo) => {
             try {
-              const { data, error } = await supabase.storage
-                .from("message-photos")
-                .createSignedUrl(photo.storage_path, 3600);
-
-              if (error) {
-                console.error("ERROR CREATING PHOTO URL:", error);
-                return null;
-              }
-
               if (
-                !photo.photo_encryption_version &&
-                !photo.photo_iv &&
-                !photo.photo_encrypted_key
+                photo.photo_encryption_version == null &&
+                photo.photo_iv == null &&
+                photo.photo_encrypted_key == null
               ) {
+                const { data, error } = await supabase.storage
+                  .from("message-photos")
+                  .createSignedUrl(photo.storage_path, 3600);
+                if (error) {
+                  console.error("ERROR CREATING PHOTO URL:", error);
+                  return null;
+                }
                 return { url: data.signedUrl, path: photo.storage_path };
               }
 
               if (
                 photo.photo_encryption_version !== "v1" ||
-                !photo.photo_iv ||
-                !photo.photo_encrypted_key
+                typeof photo.photo_iv !== "string" || !photo.photo_iv.trim() ||
+                typeof photo.photo_encrypted_key !== "string" || !photo.photo_encrypted_key.trim()
               ) {
                 console.error("INVALID PHOTO ENCRYPTION METADATA:", photo.storage_path);
                 return null;
               }
 
-              const encryptedPhotoResponse = await fetch(data.signedUrl);
-              if (!encryptedPhotoResponse.ok) {
-                console.error("ERROR DOWNLOADING ENCRYPTED PHOTO");
+              const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+              if (sessionError || !session?.access_token) {
+                console.error("Please sign in again to decrypt your photo.");
                 return null;
               }
-
-              const encryptedPhoto = await encryptedPhotoResponse.arrayBuffer();
               const decryptResponse = await fetch("/api/decrypt-file", {
                 method: "POST",
                 headers: {
-                  "Content-Type": "application/octet-stream",
-                  "X-Encryption-IV": photo.photo_iv,
-                  "X-Encrypted-Key": photo.photo_encrypted_key,
+                  Authorization: `Bearer ${session.access_token}`,
+                  "Content-Type": "application/json",
                 },
-                body: encryptedPhoto,
+                body: JSON.stringify({ type: "photo", messageId: messageId, photoPath: photo.storage_path }),
               });
 
               if (!decryptResponse.ok) {
@@ -688,10 +683,7 @@ if (data.voice_path) {
                 return null;
               }
 
-              const decryptedPhoto = await decryptResponse.arrayBuffer();
-              const blob = new Blob([decryptedPhoto], {
-                type: photo.photo_mime_type || "image/jpeg",
-              });
+              const blob = await decryptResponse.blob();
               return {
                 url: URL.createObjectURL(blob),
                 path: photo.storage_path,
@@ -2193,7 +2185,6 @@ if (recordedVideo) {
             photo_mime_type: photoMimeType,
           });
         }
-        console.log("PHOTO ROWS TO INSERT:", photoRows);
         if (
           photoRows.length > 0
         ) {

@@ -9,6 +9,9 @@ export async function POST(request: Request) {
     if (payload && typeof payload === "object" && "type" in payload && payload.type === "document") {
       return decryptDocument(request);
     }
+    if (payload && typeof payload === "object" && "type" in payload && payload.type === "photo") {
+      return decryptPhoto(request);
+    }
     return decryptVoice(request);
   }
   // Temporary compatibility for legacy photo/video callers.
@@ -229,5 +232,95 @@ async function decryptDocument(request: Request) {
     });
   } catch {
     return NextResponse.json({ error: "Unable to decrypt document" }, { status: 500 });
+  }
+}
+
+async function decryptPhoto(request: Request) {
+  const bearer = request.headers.get("authorization")?.match(/^Bearer (\S+)$/i);
+  if (!bearer) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      {
+        auth: { persistSession: false, autoRefreshToken: false },
+        global: { headers: { Authorization: `Bearer ${bearer[1]}` } },
+      }
+    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(bearer[1]);
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload: unknown = await request.json().catch(() => null);
+    if (
+      !payload || typeof payload !== "object" || Array.isArray(payload) ||
+      !("type" in payload) || payload.type !== "photo" ||
+      !("messageId" in payload) || typeof payload.messageId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload.messageId) ||
+      !("photoPath" in payload) || typeof payload.photoPath !== "string" || !payload.photoPath.trim() ||
+      Object.keys(payload).some((key) => !["type", "messageId", "photoPath"].includes(key)) ||
+      request.headers.has("X-Encryption-IV") || request.headers.has("X-Encrypted-Key")
+    ) {
+      return NextResponse.json({ error: "Invalid photo request" }, { status: 400 });
+    }
+
+    const { data: message, error: messageError } = await supabase
+      .from("messages")
+      .select("id, user_id")
+      .eq("id", payload.messageId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (messageError) {
+      return NextResponse.json({ error: "Unable to load message" }, { status: 500 });
+    }
+    if (!message || message.id !== payload.messageId || message.user_id !== user.id) {
+      return NextResponse.json({ error: "Message not found" }, { status: 404 });
+    }
+
+    const { data: photo, error: photoError } = await supabase
+      .from("message_photos")
+      .select("message_id, user_id, storage_path, photo_iv, photo_encrypted_key, photo_encryption_version, photo_mime_type")
+      .eq("message_id", message.id)
+      .eq("storage_path", payload.photoPath)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (photoError) {
+      return NextResponse.json({ error: "Unable to load photo" }, { status: 500 });
+    }
+    if (!photo || photo.user_id !== user.id || photo.message_id !== message.id || photo.storage_path !== payload.photoPath) {
+      return NextResponse.json({ error: "Photo not found" }, { status: 404 });
+    }
+    if (
+      photo.photo_encryption_version !== "v1" ||
+      typeof photo.photo_iv !== "string" || !photo.photo_iv.trim() ||
+      typeof photo.photo_encrypted_key !== "string" || !photo.photo_encrypted_key.trim()
+    ) {
+      return NextResponse.json({ error: "Invalid encrypted photo data" }, { status: 422 });
+    }
+
+    const { data: encryptedPhoto, error: downloadError } = await supabase.storage
+      .from("message-photos")
+      .download(photo.storage_path);
+    if (downloadError || !encryptedPhoto || encryptedPhoto.size === 0) {
+      return NextResponse.json({ error: "Unable to load photo file" }, { status: 500 });
+    }
+
+    const plaintextKey = await decryptDataKey(Buffer.from(photo.photo_encrypted_key, "base64"));
+    const aesKey = await importAesKey(plaintextKey);
+    const plaintext = await decryptBytes(await encryptedPhoto.arrayBuffer(), photo.photo_iv, aesKey);
+    return new Response(plaintext, {
+      headers: {
+        "Content-Type": typeof photo.photo_mime_type === "string" &&
+          /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i.test(photo.photo_mime_type.trim())
+          ? photo.photo_mime_type.trim() : "application/octet-stream",
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch {
+    return NextResponse.json({ error: "Unable to decrypt photo" }, { status: 500 });
   }
 }
