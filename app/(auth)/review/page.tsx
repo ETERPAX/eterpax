@@ -848,7 +848,9 @@ function ReviewContent() {
                                 .replace(/^\d+-\d+-/, "")
                                 .replace(/[^a-zA-Z0-9._-]/g, "_")
                                 .replace(/^\.+/, "") || "document"
-                            )}`
+                            )}${/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(previewModal.message.id)
+                              ? `&message=${encodeURIComponent(previewModal.message.id)}`
+                              : ""}`
                           )
                         }
                         className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4 text-left transition hover:border-[#0A7BA8]/40 hover:shadow-sm"

@@ -14,14 +14,18 @@ pdfjs.GlobalWorkerOptions.workerSrc =
 export default function DocumentViewerPage() {
   const searchParams = useSearchParams();
   const documentUrl = searchParams.get("url");
+  const messageId = searchParams.get("message");
+  const backHref = messageId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(messageId)
+    ? `/review?message=${encodeURIComponent(messageId)}`
+    : "/your-messages";
   const filename = (searchParams.get("filename") || "document")
     .replace(/[^a-zA-Z0-9._-]/g, "_")
     .replace(/^\.+/, "") || "document";
 
-  return <DocumentViewer key={documentUrl} documentUrl={documentUrl} filename={filename} />;
+  return <DocumentViewer key={documentUrl} documentUrl={documentUrl} filename={filename} backHref={backHref} />;
 }
 
-function DocumentViewer({ documentUrl, filename }: { documentUrl: string | null; filename: string }) {
+function DocumentViewer({ documentUrl, filename, backHref }: { documentUrl: string | null; filename: string; backHref: string }) {
   const router = useRouter();
   const [resolved, setResolved] = useState<{ url: string; mime: string; text: string } | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -90,7 +94,7 @@ function DocumentViewer({ documentUrl, filename }: { documentUrl: string | null;
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-5 md:px-10">
         <button
           type="button"
-          onClick={() => router.push("/your-messages")}
+          onClick={() => router.push(backHref)}
           className="flex items-center gap-2 text-sm font-medium text-[#0A7BA8] transition hover:opacity-70"
         >
           <ArrowLeft className="h-4 w-4" />
