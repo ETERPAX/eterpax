@@ -1,217 +1,66 @@
 import Stripe from "stripe";
-import { createClient } from "@supabase/supabase-js";
+import { guardianAdmin, sendGuardianConfirmations, uuidPattern } from "@/lib/guardians/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!
-  );
+const idOf = (value: string | { id: string } | null | undefined) => typeof value === "string" ? value : value?.id;
+
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  if (!signature || !webhookSecret) {
-    return Response.json(
-      { error: "Missing Stripe webhook configuration" },
-      { status: 400 }
-    );
-  }
-
-  const body = await request.text();
-
+  if (!signature || !webhookSecret) return Response.json({ error: "Missing webhook configuration" }, { status: 400 });
   let event: Stripe.Event;
+  try { event = stripe.webhooks.constructEvent(await request.text(), signature, webhookSecret); }
+  catch { return Response.json({ error: "Invalid webhook signature" }, { status: 400 }); }
 
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      webhookSecret
-    );
-  } catch (error) {
-    console.error("Stripe webhook signature verification failed:", error);
-
-    return Response.json(
-      { error: "Invalid webhook signature" },
-      { status: 400 }
-    );
-  }
-
-  switch (event.type) {
-    case "checkout.session.completed": {
-        const session = event.data.object;
-      
-        const userId = session.metadata?.user_id;
-        const subscriptionId =
-          typeof session.subscription === "string"
-            ? session.subscription
-            : session.subscription?.id;
-      
-        const customerId =
-          typeof session.customer === "string"
-            ? session.customer
-            : session.customer?.id;
-      
-        if (!userId || !subscriptionId) {
-          console.error(
-            "Stripe checkout completed without user_id or subscription_id:",
-            session.id
-          );
-          break;
-        }
-      
-        const subscription =
-          await stripe.subscriptions.retrieve(subscriptionId);
-      
-        const priceId = subscription.items.data[0]?.price.id;
-      
-        if (!priceId) {
-          console.error(
-            "Stripe subscription has no price:",
-            subscription.id
-          );
-          break;
-        }
-      
-        const { error } = await supabase
-          .from("subscriptions")
-          .upsert(
-            {
-              user_id: userId,
-              stripe_customer_id: customerId ?? null,
-              stripe_subscription_id: subscription.id,
-              stripe_price_id: priceId,
-              status: subscription.status,
-              current_period_start: new Date(
-                subscription.items.data[0].current_period_start * 1000
-              ).toISOString(),
-              
-              current_period_end: new Date(
-                subscription.items.data[0].current_period_end * 1000
-              ).toISOString(),
-              cancel_at_period_end: subscription.cancel_at_period_end,
-              canceled_at: subscription.canceled_at
-                ? new Date(subscription.canceled_at * 1000).toISOString()
-                : null,
-              updated_at: new Date().toISOString(),
-            },
-            {
-              onConflict: "stripe_subscription_id",
-            }
-          );
-      
-        if (error) {
-          console.error(
-            "Supabase subscription upsert failed:",
-            error
-          );
-          break;
-        }
-      
-        console.log(
-          "Stripe checkout completed and subscription saved:",
-          subscription.id
-        );
-      
+    let subscriptionId: string | undefined;
+    let checkoutOwner: string | undefined;
+    switch (event.type) {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded":
+        subscriptionId = idOf(event.data.object.subscription);
+        checkoutOwner = event.data.object.metadata?.user_id;
         break;
-      }
-
-      case "customer.subscription.updated": {
-        const subscription = event.data.object;
-      
-        const userId = subscription.metadata?.user_id;
-        const subscriptionItem = subscription.items.data[0];
-      
-        if (!userId || !subscriptionItem) {
-          console.error(
-            "Stripe subscription updated without user_id or subscription item:",
-            subscription.id
-          );
-          break;
-        }
-      
-        const customerId =
-          typeof subscription.customer === "string"
-            ? subscription.customer
-            : subscription.customer?.id;
-      
-        const { error } = await supabase
-          .from("subscriptions")
-          .upsert(
-            {
-              user_id: userId,
-              stripe_customer_id: customerId ?? null,
-              stripe_subscription_id: subscription.id,
-              stripe_price_id: subscriptionItem.price.id,
-              status: subscription.status,
-              current_period_start: new Date(
-                subscriptionItem.current_period_start * 1000
-              ).toISOString(),
-              current_period_end: new Date(
-                subscriptionItem.current_period_end * 1000
-              ).toISOString(),
-              cancel_at_period_end: subscription.cancel_at_period_end,
-              canceled_at: subscription.canceled_at
-                ? new Date(
-                    subscription.canceled_at * 1000
-                  ).toISOString()
-                : null,
-              updated_at: new Date().toISOString(),
-            },
-            {
-              onConflict: "stripe_subscription_id",
-            }
-          );
-      
-        if (error) {
-          console.error(
-            "Supabase subscription update failed:",
-            error
-          );
-          break;
-        }
-      
-        console.log(
-          "Stripe subscription updated and saved:",
-          subscription.id
-        );
-      
+      case "customer.subscription.created":
+      case "customer.subscription.updated":
+      case "customer.subscription.deleted":
+        subscriptionId = event.data.object.id;
         break;
-      }
-
-      case "customer.subscription.deleted": {
-        const subscription = event.data.object;
-      
-        const { error } = await supabase
-          .from("subscriptions")
-          .update({
-            status: "canceled",
-            canceled_at: subscription.canceled_at
-              ? new Date(subscription.canceled_at * 1000).toISOString()
-              : new Date().toISOString(),
-            cancel_at_period_end: false,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("stripe_subscription_id", subscription.id);
-      
-        if (error) {
-          console.error(
-            "Supabase subscription cancellation update failed:",
-            error
-          );
-          break;
-        }
-      
-        console.log(
-          "Stripe subscription deleted and marked canceled:",
-          subscription.id
-        );
-      
+      case "invoice.paid":
+        subscriptionId = idOf(event.data.object.parent?.subscription_details?.subscription);
         break;
-      }
-
-    default:
-      console.log("Unhandled Stripe event:", event.type);
-  }
-
-  return Response.json({ received: true });
+      default: return Response.json({ received: true });
+    }
+    if (!subscriptionId) return Response.json({ received: true });
+    // Never activate from a redirect or stale webhook snapshot. Retrieve current
+    // Stripe state, including payment, before committing the activation gate.
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, { expand: ["latest_invoice"] });
+    const userId = subscription.metadata?.user_id;
+    const item = subscription.items.data[0];
+    if (!userId || !uuidPattern.test(userId) || !item || (checkoutOwner && checkoutOwner !== userId)) {
+      return Response.json({ error: "Invalid subscription identity" }, { status: 400 });
+    }
+    const invoice = typeof subscription.latest_invoice === "object" ? subscription.latest_invoice : null;
+    const paidAt = invoice?.status === "paid" ? invoice.status_transitions.paid_at : null;
+    const activatedAt = subscription.status === "active" && paidAt ? new Date(paidAt * 1000).toISOString() : null;
+    const admin = guardianAdmin();
+    const { error } = await admin.rpc("sync_guardian_plan_subscription", {
+      p_subscription: {
+        user_id: userId, stripe_customer_id: idOf(subscription.customer) ?? null,
+        stripe_subscription_id: subscription.id, stripe_price_id: item.price.id, status: subscription.status,
+        current_period_start: new Date(item.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(item.current_period_end * 1000).toISOString(),
+        cancel_at_period_end: subscription.cancel_at_period_end,
+        canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+        updated_at: new Date().toISOString(),
+      },
+      p_activated_at: activatedAt,
+    });
+    if (error) throw new Error("Subscription persistence failed");
+    if (activatedAt && !await sendGuardianConfirmations(admin, userId)) {
+      // Stripe may retry; durable claims prevent another provider attempt.
+      return Response.json({ error: "Notification processing incomplete" }, { status: 503 });
+    }
+    return Response.json({ received: true });
+  } catch { return Response.json({ error: "Webhook processing incomplete" }, { status: 503 }); }
 }

@@ -1,17 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Pencil, Users, ShieldCheck } from "lucide-react";
 
 import { Input } from "@/components/ui/Input";
 import { supabase } from "@/lib/supabase";
 
-type Guardian = {
-  name: string;
-  email: string;
-  relationship: string;
-};
+import { Guardian, loadGuardians as fetchGuardians, saveGuardians } from "@/lib/guardians/client";
+import { GuardianSavedNotice } from "@/components/guardians/GuardianSavedNotice";
 
 const emptyGuardian = (): Guardian => ({
   name: "",
@@ -26,6 +23,10 @@ export default function GuardiansPage() {
     emptyGuardian(),
   ]);
 
+  const [existingIds, setExistingIds] = useState<string[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [showSavedNotice, setShowSavedNotice] = useState(false);
+  const saveInFlight = useRef(false);
   const [openGuardian, setOpenGuardian] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -42,24 +43,14 @@ export default function GuardiansPage() {
         return;
       }
 
-      const { data, error } = await supabase
-        .from("guardians")
-        .select("name, email, relationship")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        console.error("Error loading guardians:", error);
-      } else if (data && data.length > 0) {
-        setGuardians([
-          ...data,
-          ...Array.from(
-            { length: Math.max(0, 3 - data.length) },
-            emptyGuardian
-          ),
-        ]);
+      try {
+        const data = await fetchGuardians();
+        setGuardians([...data, ...Array.from({ length: Math.max(0, 3 - data.length) }, emptyGuardian)]);
+        setExistingIds(data.map(row => row.id!));
+        setLoaded(true);
+      } catch {
+        alert("We could not load your Guardians. Please reload before saving.");
       }
-
       setLoading(false);
     };
 
@@ -90,7 +81,7 @@ export default function GuardiansPage() {
   };
 
   const removeGuardian = (index: number) => {
-    if (guardians.length <= 3) return;
+    if (guardians.length <= 2) return;
 
     setGuardians((current) =>
       current.filter((_, i) => i !== index)
@@ -100,72 +91,34 @@ export default function GuardiansPage() {
   };
 
   const handleSave = async () => {
-    const requiredGuardians = guardians.slice(0, 3);
-
-    const allRequiredComplete = requiredGuardians.every(
-      (guardian) =>
-        guardian.name.trim() &&
-        guardian.email.trim() &&
-        guardian.relationship.trim()
-    );
-
-    if (!allRequiredComplete) {
-      alert("Please complete all three required Guardians before saving.");
+    if (!loaded || saveInFlight.current) return;
+    const selected = guardians.filter(row => row.id || row.name.trim() || row.email.trim() || row.relationship.trim());
+    if (selected.length < 2 || selected.length > 6 || selected.some(row => !row.name.trim() || !row.email.trim() || !row.relationship.trim())) {
+      alert("Please complete between two and six Guardians before saving.");
       return;
     }
-
-    const validGuardians = guardians.filter(
-      (guardian) =>
-        guardian.name.trim() &&
-        guardian.email.trim() &&
-        guardian.relationship.trim()
-    );
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      alert("Your session has expired. Please log in again.");
-      window.location.href = "/login";
-      return;
-    }
-
+    saveInFlight.current = true;
     setSaving(true);
-
-    const { error: deleteError } = await supabase
-      .from("guardians")
-      .delete()
-      .eq("user_id", user.id);
-
-    if (deleteError) {
-      console.error("Error clearing guardians:", deleteError);
-      alert("We could not save your Guardians. Please try again.");
+    try {
+      const result = await saveGuardians(selected, existingIds);
+      setGuardians(result.guardians);
+      setExistingIds(result.guardians.map(row => row.id!));
+      if (!result.active) {
+        setShowSavedNotice(true);
+        return;
+      }
+      if (!result.notificationsComplete) {
+        alert("Guardians saved. Some notification emails could not be confirmed as sent. Please contact support; saving again will not resend an attempted email.");
+        return;
+      }
+      alert("Your Guardians have been saved.");
+    } catch (error) {
+      setLoaded(false);
+      alert(error instanceof Error ? error.message : "Unable to save Guardians. Please reload.");
+    } finally {
+      saveInFlight.current = false;
       setSaving(false);
-      return;
     }
-
-    const { error: insertError } = await supabase
-      .from("guardians")
-      .insert(
-        validGuardians.map((guardian) => ({
-          user_id: user.id,
-          name: guardian.name.trim(),
-          email: guardian.email.trim(),
-          relationship: guardian.relationship.trim(),
-        }))
-      );
-
-    if (insertError) {
-      console.error("Error saving guardians:", insertError);
-      alert("We could not save your Guardians. Please try again.");
-      setSaving(false);
-      return;
-    }
-
-    setSaving(false);
-    alert("Your Guardians have been saved.");
   };
 
   const activeGuardians = guardians.filter(
@@ -256,7 +209,7 @@ export default function GuardiansPage() {
             </h2>
 
             <p className="mt-1 text-sm text-white/80">
-              You need at least three Guardians. You may have up to six.
+              You need at least two Guardians. You may have up to six.
             </p>
           </div>
 
@@ -379,7 +332,7 @@ export default function GuardiansPage() {
                       />
 
                       <div className="flex items-center justify-between pt-1">
-                        {guardians.length > 3 && (
+                        {guardians.length > 2 && (
                           <button
                             type="button"
                             onClick={() => removeGuardian(index)}
@@ -453,7 +406,7 @@ export default function GuardiansPage() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving}
+            disabled={!loaded || saving || showSavedNotice}
             className="inline-flex items-center rounded-full bg-[#0A7BA8] px-10 py-4 font-medium text-white shadow-lg shadow-sky-500/10 transition hover:bg-[#08698F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save Changes"}
@@ -461,6 +414,7 @@ export default function GuardiansPage() {
         </div>
 
       </div>
+      {showSavedNotice && <GuardianSavedNotice onContinue={() => setShowSavedNotice(false)} />}
     </main>
   );
 }
