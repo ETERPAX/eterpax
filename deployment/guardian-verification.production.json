@@ -1,0 +1,51 @@
+{
+  "productionBranch": "sprint-1-landing",
+  "vercel": {
+    "projectId": null,
+    "teamId": null,
+    "canonicalOrigin": "https://www.eterpax.com",
+    "environment": "production",
+    "variables": {
+      "CONTINUITY_SCHEDULER_ENABLED": "false",
+      "GUARDIAN_VERIFICATION_PREPARATION_ENABLED": "false",
+      "GUARDIAN_VERIFICATION_AUTOMATIC_ENABLED": "false",
+      "GUARDIAN_VERIFICATION_EMAIL_ENABLED": "false",
+      "GUARDIAN_VERIFICATION_RESPONSE_ENABLED": "true",
+      "CONTINUITY_ENVIRONMENT": "production",
+      "SUPABASE_URL": "https://nfnkgvjehggrzlysvvhi.supabase.co",
+      "GUARDIAN_VERIFICATION_QUESTION": "Please confirm the situation regarding [Owner's Name].",
+      "GUARDIAN_VERIFICATION_POSITIVE_LABEL": "Yes, I can confirm",
+      "GUARDIAN_VERIFICATION_NEGATIVE_LABEL": "No, [Owner's Name] is okay",
+      "NEXT_PUBLIC_SITE_URL": "https://www.eterpax.com"
+    },
+    "requiredExistingSecrets": [
+      "SUPABASE_SECRET_KEY"
+    ],
+    "requiredExistingVariables": []
+  },
+  "resend": {
+    "from": "ETERPAX <hello@eterpax.com>",
+    "domain": "eterpax.com",
+    "domainStatusRequired": "verified",
+    "clickTrackingRequired": false,
+    "credentials": "RESEND_API_KEY only in authorized local send process; preserve existing Vercel credentials used by other features",
+    "readiness": "Local credential returned HTTP 401 on read-only domain lookup; load a valid authorized credential before the first email. Domain status and tracking remain unconfirmed."
+  },
+  "manualSend": {
+    "script": "scripts/send-guardian-verification-initial.mjs",
+    "requiredIdentity": [
+      "ETERPAX_TEST_OWNER_ID",
+      "ETERPAX_TEST_GUARDIAN_EMAIL",
+      "escalationId",
+      "guardianId"
+    ],
+    "environmentOverrides": {
+      "NODE_ENV": "production",
+      "GUARDIAN_VERIFICATION_EMAIL_ENABLED": "true",
+      "GUARDIAN_VERIFICATION_RESPONSE_ENABLED": "true",
+      "CONTINUITY_SCHEDULER_ENABLED": "false",
+      "GUARDIAN_VERIFICATION_PREPARATION_ENABLED": "false",
+      "GUARDIAN_VERIFICATION_AUTOMATIC_ENABLED": "false"
+    }
+  }
+}
