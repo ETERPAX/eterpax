@@ -1,12 +1,30 @@
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+let stripe: Stripe | undefined;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-);
+function getStripe(): Stripe {
+  const secretKey = process.env.STRIPE_SECRET_KEY;
+  if (!secretKey?.trim()) {
+    throw new Error("Missing STRIPE_SECRET_KEY");
+  }
+
+  stripe ??= new Stripe(secretKey);
+  return stripe;
+}
+
+let supabase: ReturnType<typeof createClient> | undefined;
+
+function getSupabase(): ReturnType<typeof createClient> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url?.trim() || !publishableKey?.trim()) {
+    throw new Error("Missing Supabase configuration");
+  }
+
+  supabase ??= createClient(url, publishableKey);
+  return supabase;
+}
 
 export async function POST(request: Request) {
   try {
@@ -19,6 +37,7 @@ export async function POST(request: Request) {
       );
     }
 
+    const supabase = getSupabase();
     const accessToken = authorization.replace("Bearer ", "");
 
     const {
@@ -43,7 +62,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: "subscription",
       line_items: [
         {
