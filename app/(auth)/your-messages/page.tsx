@@ -2,6 +2,9 @@
 import EterpaxLetterEditor from "@/components/EterpaxLetterEditor.tsx/EterpaxLetterEditor";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { useMessageDeletion } from "@/components/messages/useMessageDeletion";
+import { messageCoordinationEnabled } from "@/lib/messages/capabilities";
+import { uploadMessageFile, type MessageBucket } from "@/lib/messages/uploads";
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -50,8 +53,67 @@ function YourMessagesContent() {
   const [recipientEmail, setRecipientEmail] = useState("");
   const [message, setMessage] = useState("");
 
+  const draftRef = useRef<{ source: string | null; promise: Promise<string> } | null>(null);
+
+  useEffect(() => {
+    draftRef.current = null;
+  }, [messageId, isNewMessage]);
+
+  async function ensureDraftMessage(): Promise<string> {
+    if (messageId) return messageId;
+    if (draftRef.current?.source === messageId) return draftRef.current.promise;
+    const promise = (async () => {
+      if (!recipient.trim() || !recipientEmail.trim()) {
+        throw new Error("Please enter the recipient's name and email before uploading.");
+      }
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) throw new Error("Please sign in again.");
+      const result = await supabase.from("messages").insert({ user_id: user.id,
+        recipient_name: recipient.trim(), recipient_email: recipientEmail.trim(),
+        body: "", status: "draft", document_path: null, voice_path: null, video_path: null,
+      }).select("id").single();
+      if (result.error || !result.data) throw new Error("Unable to create the attachment draft.");
+      return result.data.id as string;
+    })();
+    draftRef.current = { source: messageId, promise };
+    try { return await promise; } catch (error) { draftRef.current = null; throw error; }
+  }
+
+  // Storage mutations use registered operations; encryption is unchanged.
+  function trackedStorage(bucket: MessageBucket) {
+    return {
+      async upload(proposedPath: string, ciphertext: Blob, _options: object) {
+        try {
+          if (!await messageCoordinationEnabled(supabase)) {
+            const result = await supabase.storage.from(bucket).upload(proposedPath, ciphertext, _options);
+            return { error: result.error, path: result.data?.path ?? null };
+          }
+          const id = await ensureDraftMessage();
+          const result = await uploadMessageFile(supabase, id, bucket, ciphertext);
+          return { error: null, path: result.path };
+        } catch (error) {
+          return { error: error instanceof Error ? error : new Error("Upload incomplete; recovery retained."), path: null };
+        }
+      },
+      async remove(paths: string[]) {
+        try {
+          if (!await messageCoordinationEnabled(supabase)) return await supabase.storage.from(bucket).remove(paths);
+          const id = await ensureDraftMessage();
+          for (const path of paths) {
+            const result = await supabase.rpc("queue_message_file_removal", {
+              p_message_id: id, p_bucket: bucket, p_path: path,
+            });
+            if (result.error) return { error: result.error };
+          }
+          return { error: null };
+        } catch { return { error: new Error("Unable to queue file cleanup.") }; }
+      },
+    };
+  }
+
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(true);
+  const deletion = useMessageDeletion(id => setSavedMessages(current => current.filter(item => item.id !== id)));
  
   /* =========================================================
      POPUPS
@@ -319,16 +381,18 @@ const [letterSaved, setLetterSaved] = useState(false);
         throw new Error("Unable to prepare the encrypted video.");
       }
 
-      const filePath = `${user.id}/${Date.now()}.${extension}`;
+      // This callback runs only on the file input change event, never during render.
+      // eslint-disable-next-line react-hooks/purity
+      let filePath = `${user.id}/${Date.now()}.${extension}`;
       const encryptedBlob = new Blob([encryptedVideo], {
         type: "application/octet-stream",
       });
-      const { error: uploadError } = await supabase.storage
-        .from("message-videos")
+      const { error: uploadError, path: registeredPath } = await trackedStorage("message-videos")
         .upload(filePath, encryptedBlob, {
           contentType: "application/octet-stream",
           upsert: false,
         });
+        filePath = registeredPath ?? filePath;
 
       if (uploadError) {
         throw new Error("Unable to upload the video.");
@@ -337,8 +401,7 @@ const [letterSaved, setLetterSaved] = useState(false);
 
       const previousVideo = recordedVideoRef.current;
       if (previousVideo && previousVideo.filePath !== filePath) {
-        const { error: removePreviousVideoError } = await supabase.storage
-          .from("message-videos")
+        const { error: removePreviousVideoError } = await trackedStorage("message-videos")
           .remove([previousVideo.filePath]);
 
         if (removePreviousVideoError) {
@@ -347,6 +410,8 @@ const [letterSaved, setLetterSaved] = useState(false);
       }
 
       const newRecordedVideo: RecordedVideo = {
+        // File input event identifier; this object is not constructed during render.
+        // eslint-disable-next-line react-hooks/purity
         id: Date.now(),
         url: URL.createObjectURL(file),
         blob: file,
@@ -367,8 +432,7 @@ const [letterSaved, setLetterSaved] = useState(false);
     } catch (error) {
       if (uploadedFilePath) {
         try {
-          const { error: cleanupError } = await supabase.storage
-            .from("message-videos")
+          const { error: cleanupError } = await trackedStorage("message-videos")
             .remove([uploadedFilePath]);
           if (cleanupError) {
             console.error("VIDEO UPLOAD CLEANUP ERROR:", cleanupError);
@@ -1037,8 +1101,7 @@ cameraStreamRef.current = stream;
           return;
         }
         if (recordedVideoRef.current?.filePath) {
-          const { error: removePreviousVideoError } = await supabase.storage
-            .from("message-videos")
+          const { error: removePreviousVideoError } = await trackedStorage("message-videos")
             .remove([recordedVideoRef.current.filePath]);
         
           if (removePreviousVideoError) {
@@ -1051,7 +1114,7 @@ cameraStreamRef.current = stream;
           }
         }
         const fileName = `${Date.now()}.webm`;
-const filePath = `${user.id}/${fileName}`;
+let filePath = `${user.id}/${fileName}`;
 
 console.log("VIDEO: ENCRIPTANDO:", filePath);
 
@@ -1096,12 +1159,12 @@ const encryptedBlob = new Blob([encryptedVideo], {
 
 console.log("VIDEO: SUBIENDO ENCRIPTADO:", filePath);
 
-const { error: uploadError } = await supabase.storage
-  .from("message-videos")
+const { error: uploadError, path: registeredPath } = await trackedStorage("message-videos")
   .upload(filePath, encryptedBlob, {
     contentType: "application/octet-stream",
     upsert: false,
   });
+        filePath = registeredPath ?? filePath;
   
         if (uploadError) {
           console.error("VIDEO UPLOAD ERROR:", uploadError);
@@ -1666,6 +1729,9 @@ if (!stream) {
 
         return;
       }
+      let messageId: string | null = searchParams.get("message");
+      try { if (await messageCoordinationEnabled(supabase)) messageId = await ensureDraftMessage(); }
+      catch (error) { alert(error instanceof Error ? error.message : "Unable to prepare message."); return; }
       let encryptionData: {
         ciphertext: string | null;
         iv: string | null;
@@ -1713,7 +1779,7 @@ if (documentFiles.length > 0) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-zA-Z0-9._-]/g, "_");
   
-  const filePath =
+  let filePath =
     `${user.id}/${Date.now()}-${index}-${safeFileName}`;
 
     const documentMimeType = file.type || "application/octet-stream";
@@ -1747,10 +1813,7 @@ if (documentFiles.length > 0) {
       type: "application/octet-stream",
     });
 
-    const {
-      error,
-    } = await supabase.storage
-      .from("message-documents")
+    const { error, path: registeredPath } = await trackedStorage("message-documents")
       .upload(
         filePath,
         encryptedDocument,
@@ -1759,6 +1822,7 @@ if (documentFiles.length > 0) {
           upsert: false,
         }
       );
+        filePath = registeredPath ?? filePath;
 
     if (error) {
       console.error(
@@ -1820,13 +1884,10 @@ voiceIv = voiceEncryptionResponse.headers.get("X-Encryption-IV");
 voiceEncryptedKey =
   voiceEncryptionResponse.headers.get("X-Encrypted-Key");
 voiceEncryptionVersion = "v1";
-        const filePath =
+        let filePath =
           `${user.id}/${Date.now()}.webm`;
 
-        const {
-          error,
-        } = await supabase.storage
-          .from("message-audio")
+        const { error, path: registeredPath } = await trackedStorage("message-audio")
           .upload(
             filePath,
             encryptedVoiceBlob,
@@ -1836,6 +1897,7 @@ voiceEncryptionVersion = "v1";
               upsert: false,
             }
           );
+        filePath = registeredPath ?? filePath;
 
         if (error) {
           console.error(
@@ -1903,8 +1965,7 @@ voice_encryption_version: voiceEncryptionVersion,
           .eq("user_id", user.id);
 
         if (removedVoicePath) {
-  const { error: deleteVoiceError } = await supabase.storage
-    .from("message-audio")
+  const { error: deleteVoiceError } = await trackedStorage("message-audio")
     .remove([removedVoicePath]);
 
   if (deleteVoiceError) {
@@ -1969,8 +2030,7 @@ if (
   (uploadedDocuments.length > 0 || documentsToDelete.length > 0)
 ) {
   if (documentsToDelete.length > 0) {
-    const { error: deleteDocumentStorageError } = await supabase.storage
-  .from("message-documents")
+    const { error: deleteDocumentStorageError } = await trackedStorage("message-documents")
   .remove(documentsToDelete);
 
 if (deleteDocumentStorageError) {
@@ -2065,8 +2125,7 @@ if (loadVideosError) {
 const existingVideoPaths =
   existingVideos?.map((video) => video.video_path).filter(Boolean) ?? [];
   if (existingVideoPaths.length > 0) {
-    const { error: deleteStorageError } = await supabase.storage
-      .from("message-videos")
+    const { error: deleteStorageError } = await trackedStorage("message-videos")
       .remove(existingVideoPaths);
   
     if (deleteStorageError) {
@@ -2140,8 +2199,7 @@ if (recordedVideo) {
             deletePhotoRowsError
           );
         } else {
-          const { error: deletePhotoStorageError } = await supabase.storage
-            .from("message-photos")
+          const { error: deletePhotoStorageError } = await trackedStorage("message-photos")
             .remove(removedPhotoPaths);
       
           if (deletePhotoStorageError) {
@@ -2169,7 +2227,7 @@ if (recordedVideo) {
         for (
           const file of photoFiles
         ) {
-          const filePath =
+          let filePath =
             `${user.id}/${currentMessageId}/${Date.now()}-${file.name}`;
 
           const photoMimeType = file.type || "image/jpeg";
@@ -2203,10 +2261,7 @@ if (recordedVideo) {
             type: "application/octet-stream",
           });
 
-          const {
-            error,
-          } = await supabase.storage
-            .from("message-photos")
+          const { error, path: registeredPath } = await trackedStorage("message-photos")
             .upload(
               filePath,
               encryptedPhoto,
@@ -2215,6 +2270,7 @@ if (recordedVideo) {
                 upsert: false,
               }
             );
+        filePath = registeredPath ?? filePath;
 
           if (error) {
             console.error(
@@ -2316,6 +2372,14 @@ if (recordedVideo) {
           </div>
   
           {/* MESSAGE LIST */}
+          {deletion.notice && <p role="status" className="rounded-xl border p-4">{deletion.notice}</p>}
+          {deletion.enabled && deletion.pending.map(id => (
+            <div key={id} className="rounded-xl border p-4">
+              <p>Message deletion pending. Files are being checked and cleaned safely.</p>
+              <button type="button" disabled={deletion.busy !== null} onClick={() => void deletion.run(id, "check")}
+                className="mt-2 underline disabled:opacity-50">Check deletion status</button>
+            </div>
+          ))}
           {loadingMessages ? (
             <div className="rounded-3xl bg-white p-8 text-center shadow-sm">
               <p className="text-sm text-neutral-500">
@@ -2325,7 +2389,7 @@ if (recordedVideo) {
           ) : savedMessages.length === 0 ? (
             <div className="rounded-3xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
               <h2 className="text-2xl font-light text-[#0D2340]">
-                You haven't created a message yet.
+                You haven&apos;t created a message yet.
               </h2>
   
               <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-neutral-500">
@@ -2382,6 +2446,11 @@ if (recordedVideo) {
                       >
                         Edit
                       </Link>
+                      {deletion.enabled && <button type="button" disabled={deletion.busy !== null}
+                        onClick={() => void deletion.run(savedMessage.id, "delete", savedMessage.recipient_name)}
+                        className="rounded-full border border-red-700 px-6 py-3 text-sm text-red-700 disabled:opacity-50">
+                        Delete Message
+                      </button>}
                     </div>
   
                   </div>
