@@ -12,8 +12,10 @@ import {
   X,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { loadMessage, loadErrorCode, loadErrorText, type LoadIssue } from "@/lib/messages/load-message";
 
 type Message = {
+  issues: LoadIssue[];
   id: string;
   recipient_name: string | null;
   body: string | null;
@@ -62,373 +64,34 @@ function ReviewContent() {
   const [previewModal, setPreviewModal] =
     useState<PreviewModal>(null);
 
+  const [playbackError, setPlaybackError] = useState("");
+  const showPreview = (modal: PreviewModal) => { setPlaybackError(""); setPreviewModal(modal); };
+  const [loadError, setLoadError] = useState("");
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
-    const loadMessages = async () => {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setLoading(false);
-        return;
+    const controller = new AbortController();
+    let active = true;
+    const timer = setTimeout(() => controller.abort(), 60_000);
+    // Reset the request boundary before starting asynchronous reads for this message.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    setLoadError("");
+    setMessages([]);
+    setPreviewModal(null);
+    void (async () => {
+      try {
+        if (!messageId) throw new Error("Missing message");
+        const message = await loadMessage(supabase, messageId, controller.signal);
+        if (active) setMessages([message]);
+      } catch (error) {
+        if (active) setLoadError(loadErrorText(loadErrorCode(error)));
+      } finally {
+        clearTimeout(timer);
+        if (active) setLoading(false);
       }
-
-      if (!messageId) {
-        setMessages([]);
-        setLoading(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("messages")
-        .select(
-          "id, recipient_name, recipient_email, body, body_iv, body_encrypted_key, body_encryption_version, status, created_at, document_path, voice_path,voice_iv, voice_encrypted_key, voice_encryption_version"
-        )
-        .eq("user_id", user.id)
-        .eq("id", messageId)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("ERROR LOADING MESSAGES:", error);
-        setMessages([]);
-        setLoading(false);
-        return;
-      }
-
-      const messagesWithUrls = await Promise.all(
-        (data ?? []).map(async (message) => {
-          // LEGACY DOCUMENT URL
-          const documentUrl: string | null = null;
-
-          // MULTIPLE DOCUMENTS FOR THIS MESSAGE
-          const {
-            data: documentRows,
-            error: documentRowsError,
-          } = await supabase
-            .from("message_documents")
-            .select("document_path, document_iv, document_encrypted_key, document_encryption_version, document_mime_type")
-            .eq("message_id", message.id)
-            .order("created_at", { ascending: true });
-
-          if (documentRowsError) {
-            console.error(
-              "ERROR LOADING MESSAGE DOCUMENTS:",
-              documentRowsError
-            );
-          }
-
-          const documents = await Promise.all(
-            (documentRows ?? []).map(async (document) => {
-              const {
-                data: signedData,
-                error: signedError,
-              } = await supabase.storage
-                .from("message-documents")
-                .createSignedUrl(
-                  document.document_path,
-                  3600
-                );
-
-              if (signedError) {
-                console.error(
-                  "ERROR CREATING DOCUMENT URL:",
-                  signedError
-                );
-                return null;
-              }
-
-              if (
-                document.document_iv == null &&
-                document.document_encrypted_key == null &&
-                document.document_encryption_version == null
-              ) {
-                return {
-                  path: document.document_path,
-                  url: signedData.signedUrl,
-                };
-              }
-
-              if (
-                document.document_encryption_version !== "v1" ||
-                !document.document_iv ||
-                !document.document_encrypted_key
-              ) {
-                console.error("INVALID DOCUMENT ENCRYPTION METADATA:", document.document_path);
-                return null;
-              }
-
-              try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                if (sessionError || !session?.access_token) {
-                  console.error("Please sign in again to decrypt your document.");
-                  return null;
-                }
-                const decryptResponse = await fetch("/api/decrypt-file", {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    type: "document",
-                    messageId: message.id,
-                    documentPath: document.document_path,
-                  }),
-                });
-
-                if (!decryptResponse.ok) {
-                  console.error("ERROR DECRYPTING DOCUMENT");
-                  return null;
-                }
-
-                const blob = await decryptResponse.blob();
-                return {
-                  path: document.document_path,
-                  url: URL.createObjectURL(blob),
-                };
-              } catch (error) {
-                console.error("ERROR LOADING ENCRYPTED DOCUMENT:", error);
-                return null;
-              }
-            })
-          );
-
-          
-          // VIDEOS FOR THIS MESSAGE
-          const { data: videos, error: videosError } = await supabase
-            .from("message_videos")
-            .select("video_path, video_iv, video_encrypted_key, video_encryption_version")
-            .eq("message_id", message.id);
-
-          const videoUrls: string[] = [];
-          if (videosError || (videos?.length ?? 0) > 1) {
-            console.error("Unable to load an unambiguous video.");
-          } else if (videos?.length === 1) {
-            const video = videos[0];
-            try {
-              if (typeof video.video_path !== "string" || !video.video_path.trim()) {
-                throw new Error("Invalid video path.");
-              }
-              if (
-                video.video_encryption_version == null &&
-                video.video_iv == null &&
-                video.video_encrypted_key == null
-              ) {
-                const { data: signedVideo, error } = await supabase.storage
-                  .from("message-videos")
-                  .createSignedUrl(video.video_path, 3600);
-                if (error) throw new Error("Unable to load legacy video.");
-                videoUrls.push(signedVideo.signedUrl);
-              } else {
-                if (
-                  video.video_encryption_version !== "v1" ||
-                  typeof video.video_iv !== "string" || !video.video_iv.trim() ||
-                  typeof video.video_encrypted_key !== "string" || !video.video_encrypted_key.trim()
-                ) {
-                  throw new Error("Invalid encrypted video metadata.");
-                }
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                if (sessionError || !session?.access_token) {
-                  throw new Error("Please sign in again to decrypt your video.");
-                }
-                const response = await fetch("/api/decrypt-file", {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ type: "video", messageId: message.id }),
-                });
-                if (!response.ok) throw new Error("Unable to decrypt video.");
-                videoUrls.push(URL.createObjectURL(await response.blob()));
-              }
-            } catch {
-              console.error("Unable to load video.");
-            }
-          }
-
-          // VOICE FOR THIS MESSAGE
-          let voiceUrl: string | null = null;
-
-          if (message.voice_path) {
-            if (
-              message.voice_encryption_version === "v1" &&
-              message.voice_iv &&
-              message.voice_encrypted_key
-            ) {
-              const { data: { session }, error: sessionError } =
-                await supabase.auth.getSession();
-          
-              if (sessionError || !session?.access_token) {
-                console.error("Please sign in again to decrypt your voice message.");
-              } else {
-                const decryptResponse = await fetch("/api/decrypt-file", {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ type: "voice", messageId: message.id }),
-                });
-          
-                if (!decryptResponse.ok) {
-                  console.error("ERROR DECRYPTING VOICE");
-                } else {
-                  const decryptedVoiceBlob = await decryptResponse.blob();
-                  
-                  voiceUrl = URL.createObjectURL(
-                    new Blob([decryptedVoiceBlob], {
-                      type: "audio/webm",
-                    })
-                  );
-                }
-              }
-            } else {
-              const { data: signedVoiceUrlData, error: signedVoiceUrlError } =
-                await supabase.storage
-                  .from("message-audio")
-                  .createSignedUrl(message.voice_path, 3600);
-          
-              if (signedVoiceUrlError) {
-                console.error(
-                  "ERROR CREATING VOICE URL:",
-                  signedVoiceUrlError
-                );
-              } else {
-                voiceUrl = signedVoiceUrlData.signedUrl;
-              }
-            }
-          }
-
-          // PHOTOS FOR THIS MESSAGE
-          const { data: photos, error: photosError } =
-            await supabase
-              .from("message_photos")
-              .select("storage_path, photo_iv, photo_encrypted_key, photo_encryption_version, photo_mime_type")
-              .eq("message_id", message.id)
-              .order("sort_order", { ascending: true });
-
-          if (photosError) {
-            console.error(
-              "ERROR LOADING MESSAGE PHOTOS:",
-              photosError
-            );
-          }
-
-          const photoUrls = await Promise.all(
-            (photos ?? []).map(async (photo) => {
-              if (
-                photo.photo_encryption_version == null &&
-                photo.photo_iv == null &&
-                photo.photo_encrypted_key == null
-              ) {
-                const { data, error } = await supabase.storage
-                  .from("message-photos")
-                  .createSignedUrl(photo.storage_path, 3600);
-                if (error) {
-                  console.error("ERROR CREATING PHOTO URL:", error);
-                  return null;
-                }
-                return data.signedUrl;
-              }
-
-              if (
-                photo.photo_encryption_version !== "v1" ||
-                typeof photo.photo_iv !== "string" || !photo.photo_iv.trim() ||
-                typeof photo.photo_encrypted_key !== "string" || !photo.photo_encrypted_key.trim()
-              ) {
-                console.error("INVALID PHOTO ENCRYPTION METADATA:", photo.storage_path);
-                return null;
-              }
-
-              try {
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                if (sessionError || !session?.access_token) {
-                  console.error("Please sign in again to decrypt your photo.");
-                  return null;
-                }
-                const decryptResponse = await fetch("/api/decrypt-file", {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${session.access_token}`,
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({ type: "photo", messageId: message.id, photoPath: photo.storage_path }),
-                });
-
-                if (!decryptResponse.ok) {
-                  console.error("ERROR DECRYPTING PHOTO");
-                  return null;
-                }
-
-                const blob = await decryptResponse.blob();
-                return URL.createObjectURL(blob);
-              } catch (error) {
-                console.error("ERROR LOADING ENCRYPTED PHOTO:", error);
-                return null;
-              }
-            })
-          );
-          let decryptedBody = message.body;
-          if (
-            message.body_encryption_version === "v1" &&
-            message.body_iv &&
-            message.body_encrypted_key
-          ) {
-            const {
-              data: { session },
-              error: sessionError,
-            } = await supabase.auth.getSession();
-            if (sessionError || !session?.access_token) {
-              throw new Error("Please sign in again to decrypt your message.");
-            }
-            const decryptResponse = await fetch("/api/decrypt-message", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${session.access_token}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                messageId: message.id,
-              }),
-            });
-            if (!decryptResponse.ok) {
-              throw new Error("Unable to decrypt message.");
-            }
-            
-            const decryptData = await decryptResponse.json();
-            decryptedBody = decryptData.plaintext;
-          }
-          return {
-            ...message,
-            body: decryptedBody,
-            document_url: documentUrl,
-            documents: documents.filter(
-              (
-                document
-              ): document is {
-                path: string;
-                url: string;
-              } => Boolean(document)
-            ),
-            video_urls: videoUrls.filter(
-              (url): url is string => Boolean(url)
-            ),
-            photo_urls: photoUrls.filter(
-              (url): url is string => Boolean(url)
-            ),
-            voice_url: voiceUrl,
-          };
-        })
-      );
-
-      setMessages(messagesWithUrls);
-      setLoading(false);
-    };
-
-    loadMessages();
-  }, [messageId]);
+    })();
+    return () => { active = false; clearTimeout(timer); controller.abort(); };
+  }, [messageId, retry]);
 
   const closeModal = () => {
     setPreviewModal(null);
@@ -498,13 +161,17 @@ function ReviewContent() {
 
         {/* CONTENT */}
         <div className="mx-auto mt-12 max-w-4xl">
+          {loadError && <div role="alert" className="mb-6 rounded-xl border border-white/30 p-4">
+            <p>{loadError}</p>
+            <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-2 underline">Retry loading message</button>
+          </div>}
           {loading ? (
             <div className="py-16 text-center">
               <p className="text-sm text-white/70">
                 Loading your message...
               </p>
             </div>
-          ) : messages.length === 0 ? (
+          ) : loadError ? null : messages.length === 0 ? (
             <div className="rounded-3xl border border-white/20 bg-black/15 p-10 text-center backdrop-blur-md">
               <p className="text-xs uppercase tracking-[0.2em] text-white/60">
                 No messages yet
@@ -539,6 +206,10 @@ function ReviewContent() {
 
                 return (
                   <div key={message.id}>
+                    {message.issues.length > 0 && <div role="alert" className="mb-6 rounded-xl border border-white/30 p-4">
+                      {message.issues.map((issue, index) => <p key={index}>{issue.asset}: {loadErrorText(issue.code)}</p>)}
+                      <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-2 underline">Retry unavailable content</button>
+                    </div>}
                     {/* MESSAGE IDENTITY */}
                     <div className="border-y border-white/30 py-6">
                       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
@@ -566,7 +237,7 @@ function ReviewContent() {
                         <button
                           type="button"
                           onClick={() =>
-                            setPreviewModal({
+                            showPreview({
                               type: "letter",
                               message,
                             })
@@ -585,7 +256,7 @@ function ReviewContent() {
                         <button
                           type="button"
                           onClick={() =>
-                            setPreviewModal({
+                            showPreview({
                               type: "video",
                               message,
                             })
@@ -611,7 +282,7 @@ function ReviewContent() {
                         <button
                           type="button"
                           onClick={() =>
-                            setPreviewModal({
+                            showPreview({
                               type: "voice",
                               message,
                             })
@@ -634,7 +305,7 @@ function ReviewContent() {
                         <button
                           type="button"
                           onClick={() =>
-                            setPreviewModal({
+                            showPreview({
                               type: "photos",
                               message,
                             })
@@ -660,7 +331,7 @@ function ReviewContent() {
                         <button
                           type="button"
                           onClick={() =>
-                            setPreviewModal({
+                            showPreview({
                               type: "documents",
                               message,
                             })
@@ -786,6 +457,7 @@ function ReviewContent() {
                     >
                       <video
                         src={videoUrl}
+                        onError={() => setPlaybackError("Video: the file could not be played. The original file has not been changed.")}
                         controls
                         playsInline
                         className="w-full"
@@ -795,6 +467,8 @@ function ReviewContent() {
                 )}
               </div>
             )}
+
+            {playbackError && <p role="alert" className="mt-4 text-red-700">{playbackError}</p>}
 
             {/* VOICE MODAL */}
             {previewModal.type === "voice" &&
@@ -806,6 +480,7 @@ function ReviewContent() {
 
                   <audio
                     src={previewModal.message.voice_url}
+                    onError={() => setPlaybackError("Voice: the audio could not be played. The original file has not been changed.")}
                     controls
                     preload="metadata"
                     className="w-full"
