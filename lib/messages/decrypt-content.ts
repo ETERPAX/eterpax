@@ -7,8 +7,18 @@ class ContentError extends Error {
 }
 const reasons = new Set(['AccessDeniedException', 'IncorrectKeyException', 'InvalidCiphertextException',
   'NotFoundException', 'DisabledException', 'KMSInvalidStateException', 'CredentialsProviderError',
-  'TimeoutError', 'OperationError', 'DataError']);
-const reasonOf = (error: unknown) => error instanceof Error && reasons.has(error.name) ? error.name : 'UNCLASSIFIED';
+  'TimeoutError', 'OperationError', 'DataError',
+  'UnrecognizedClientException', 'InvalidClientTokenId', 'InvalidSignatureException',
+  'SignatureDoesNotMatch', 'ExpiredTokenException', 'ExpiredToken', 'InvalidToken',
+  'IncompleteSignature', 'MissingAuthenticationToken', 'RequestExpired',
+  'ValidationException', 'DependencyTimeoutException', 'KeyUnavailableException',
+  'KMSInternalException', 'ThrottlingException', 'UnknownEndpoint',
+  'TokenProviderError', 'ProviderError', 'NetworkingError']);
+const reasonOf = (error: unknown) => {
+  // SDK errors may cross realms; only emit explicitly allowed, non-private names.
+  if (!error || typeof error !== 'object' || !('name' in error)) return 'UNCLASSIFIED';
+  return typeof error.name === 'string' && reasons.has(error.name) ? error.name : 'UNCLASSIFIED';
+};
 function validateBase64(value: string, size?: number, key = false) {
   // Retain the existing decoders' whitespace/unpadded-base64 compatibility.
   const normalized = value.replace(/\s/g, '');

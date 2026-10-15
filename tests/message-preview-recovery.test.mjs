@@ -311,3 +311,24 @@ test('actual Edit save preserves original Voice and never uploads/re-encrypts an
     }
   } finally { page.close(); }
 });
+
+for (const reason of ['UnrecognizedClientException', 'InvalidSignatureException', 'ExpiredTokenException', 'ValidationException', 'AccessDeniedException', 'IncorrectKeyException', 'InvalidCiphertextException', 'NotFoundException', 'PRIVATE_UNKNOWN_NAME']) {
+  test(`KMS diagnostic classifies ${reason} without exposing provider details`, async () => {
+    const logs = [];
+    const api = load('lib/messages/decrypt-content.ts', {
+      '@/lib/kms': { decryptDataKey: async () => {
+        throw { name: reason, message: 'PRIVATE_PROVIDER_MESSAGE', stack: 'PRIVATE_STACK', ciphertext: 'PRIVATE_CIPHERTEXT' };
+      } },
+      '@/lib/encryption': {},
+    }, { console: { error: (...args) => logs.push(args) } });
+    let caught;
+    try { await api.decryptStoredText('YQ==', Buffer.alloc(12).toString('base64'), 'YQ=='); }
+    catch (error) { caught = error; }
+    assert(caught);
+    const response = api.decryptionFailure(caught);
+    assert.equal(response.code, 'KMS');
+    assert.equal(logs[0][1].reason, reason === 'PRIVATE_UNKNOWN_NAME' ? 'UNCLASSIFIED' : reason);
+    assert(!JSON.stringify(logs).includes('PRIVATE'));
+    assert(!JSON.stringify(response).includes(reason));
+  });
+}
