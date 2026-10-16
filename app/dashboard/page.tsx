@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMessageDeletion } from "@/components/messages/useMessageDeletion";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -55,8 +56,27 @@ export default function DashboardPage() {
     recipient_name: string;
     recipient_email: string;
     status: string;
+    deletion_state: string;
   }[]
 >([]);
+
+  const completedDeletions = useRef(new Set<string>());
+  const deletion = useMessageDeletion(() => {}, id => {
+    if (completedDeletions.current.has(id)) return;
+    completedDeletions.current.add(id);
+    setMessages(current => current.filter(message => message.id !== id));
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { count, error } = await supabase.from("messages")
+        .select("id", { count: "exact", head: true }).eq("user_id", user.id);
+      if (!error) setMessageCount(count ?? 0);
+    })().catch(() => { /* Keep the previous count if refresh is unavailable. */ });
+  });
+  const deletionLabels = {
+    deleting: "Deleting…", pending: "Cleanup pending", blocked: "Deletion blocked",
+    deleted: "Message deleted", unknown: "Result uncertain — check deletion status",
+  };
 
   useEffect(() => {
     const loadGuardianCount = async () => {
@@ -167,7 +187,7 @@ console.log("PROTECTION ERROR:", error);
       setMessageCount(count ?? 0);
       const { data: messageData, error: messageError } = await supabase
   .from("messages")
-  .select("id, recipient_name, recipient_email, status")
+  .select("id, recipient_name, recipient_email, status, deletion_state")
   .eq("user_id", user.id)
   .order("created_at", { ascending: false });
 
@@ -517,11 +537,16 @@ setMessages(messageData ?? []);
 </Link>
       </div>
 
+      {deletion.notice && <p role="status" className="mt-5 rounded-xl border border-neutral-300 bg-white p-4 text-sm text-[#0D2340]">{deletion.notice}</p>}
       <div className="mt-8 max-h-[360px] space-y-3 overflow-y-auto pr-2">
-  {messages.map((message) => (
+  {messages.map((message) => {
+    const state = deletion.states[message.id];
+    const pending = message.deletion_state === "deleting" || deletion.pending.includes(message.id);
+    const unavailable = pending || state === "unknown" || deletion.busy === message.id;
+    return (
     <div
       key={message.id}
-      className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white/80 px-5 py-4"
+      className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-neutral-200 bg-white/80 px-5 py-4"
     >
       <div className="min-w-0">
         <p className="truncate font-medium text-[#0D2340]">
@@ -533,7 +558,8 @@ setMessages(messageData ?? []);
         </p>
       </div>
 
-      <div className="ml-6 flex shrink-0 items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4 sm:ml-6">
+        {unavailable ? <span className="text-sm text-neutral-500">Edit unavailable</span> : <>
         <Link
           href={`/your-messages?message=${message.id}`}
           className="text-sm font-medium text-[#17375E] transition hover:text-[#0A7BA8]"
@@ -547,7 +573,26 @@ setMessages(messageData ?? []);
         >
           Preview
         </Link>
+        </>}
+        {(state || pending) && <span role="status" className="text-sm font-medium text-[#0D2340]">{state ? deletionLabels[state] : "Cleanup pending"}</span>}
+        {deletion.enabled && (pending || state === "unknown" ? (
+          <button type="button" disabled={deletion.busy !== null}
+            onClick={() => void deletion.run(message.id, "check")}
+            className="text-sm font-medium text-[#0A7BA8] underline disabled:opacity-50">Check deletion status</button>
+        ) : message.status === "draft" && message.deletion_state === "active" ? (
+          <button type="button" disabled={deletion.busy !== null}
+            onClick={() => void deletion.run(message.id, "delete", message.recipient_name)}
+            className="text-sm font-medium text-red-700 disabled:opacity-50">Delete Message</button>
+        ) : null)}
       </div>
+    </div>
+  );})}
+  {deletion.pending.filter(id => !messages.some(message => message.id === id)).map(id => (
+    <div key={id} className="rounded-xl border border-neutral-300 bg-white p-4 text-sm text-[#0D2340]">
+      <p role="status">{deletion.states[id] ? deletionLabels[deletion.states[id]] : "Cleanup pending"}</p>
+      {deletion.enabled && <button type="button" disabled={deletion.busy !== null}
+        onClick={() => void deletion.run(id, "check")}
+        className="mt-2 text-[#0A7BA8] underline disabled:opacity-50">Check deletion status</button>}
     </div>
   ))}
 </div>
