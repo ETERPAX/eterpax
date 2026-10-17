@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { YourPlanModal } from "@/components/dashboard/YourPlanModal";
 import { useMessageDeletion } from "@/components/messages/useMessageDeletion";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -40,6 +41,7 @@ function isCheckInState(value: unknown): value is CheckInState {
 }
 
 export default function DashboardPage() {
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const [guardianCount, setGuardianCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
@@ -483,6 +485,15 @@ setMessages(messageData ?? []);
                     <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-sm font-medium text-neutral-400">
                       Protection comes next
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowPlanModal(true)}
+                      aria-haspopup="dialog"
+                      className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded text-sm font-medium text-[#17375E] hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0A7BA8]"
+                    >
+                      View Your Plan
+                      <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
 
@@ -504,6 +515,7 @@ setMessages(messageData ?? []);
           </footer>
         </div>
       </div>
+      {showPlanModal && <YourPlanModal onClose={() => setShowPlanModal(false)} />}
       {showMessagesModal && (
   <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-6 backdrop-blur-sm">
     <div className="relative w-full max-w-4xl rounded-[32px] border border-white/70 bg-[#FCFBF8]/95 p-8 shadow-2xl md:p-10">
