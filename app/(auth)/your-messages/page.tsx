@@ -2869,6 +2869,15 @@ if (recordedVideo) {
 
           <div className="absolute left-1/2 top-1/2 w-[calc(100%-3rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-[32px] bg-[#0F2747] py-12 px-10 shadow-2xl">
 
+            <button
+              type="button"
+              onClick={() => setShowVideoOptions(false)}
+              aria-label="Close Add Video"
+              className="absolute right-4 top-4 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white/10 text-2xl text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+
             <div className="mx-auto mb-6 h-1.5 w-16 rounded-full bg-neutral-300" />
 
             <p className="text-xs font-medium tracking-[0.25em] text-[#7DD3FC]">
@@ -2974,6 +2983,15 @@ if (recordedVideo) {
           />
 
 <div className="absolute left-1/2 top-1/2 w-[calc(100%-3rem)] max-w-2xl -translate-x-1/2 -translate-y-1/2 rounded-[32px] bg-[#0F2747] py-12 px-10 shadow-2xl">
+
+            <button
+              type="button"
+              onClick={() => setShowPhotoOptions(false)}
+              aria-label="Close Add Photos"
+              className="absolute right-4 top-4 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white/10 text-2xl text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
 
             <div className="mx-auto mb-6 h-1.5 w-16 rounded-full bg-neutral-300" />
 
