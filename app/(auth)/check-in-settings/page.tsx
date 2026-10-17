@@ -126,14 +126,14 @@ export default function CheckInSettingsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-white flex items-center justify-center">
+      <main className="min-h-dvh bg-white flex items-center justify-center">
         <p className="text-sm text-slate-500">Loading your Check-in...</p>
       </main>
     );
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#102A43]">
+    <main className="relative min-h-dvh bg-[#102A43]">
         <div className="absolute inset-0">
   <img
     src="/images/hero-payment-v1.jpg"
@@ -142,8 +142,8 @@ export default function CheckInSettingsPage() {
   />
   <div className="absolute inset-0 bg-black/5" />
 </div>
-<div className="relative z-10 mx-auto w-full max-w-4xl px-6 py-10 md:px-10">
-        <div className="mb-10">
+<div className="relative z-10 mx-auto w-full max-w-4xl px-6 py-10 md:px-10 lg:py-[clamp(1rem,2dvh,2.5rem)]">
+        <div className="mb-10 lg:mb-[clamp(0.75rem,1.5dvh,2.5rem)]">
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 text-sm text-white transition hover:text-white/80"
@@ -154,7 +154,7 @@ export default function CheckInSettingsPage() {
         </div>
 
         <div className="max-w-3xl">
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
+          <div className="mb-3 lg:mb-2 flex items-center gap-2 text-sm font-medium text-white">
             <ShieldCheck className="h-4 w-4" />
             Your Continuity
           </div>
@@ -163,14 +163,14 @@ export default function CheckInSettingsPage() {
             Your Check-in
           </h1>
 
-          <p className="mt-4 max-w-2xl text-lg leading-8 text-white">
+          <p className="mt-4 lg:mt-2 max-w-2xl text-lg leading-8 text-white">
             Stay connected to what you leave. Choose how often ETERPAX should
             ask you to confirm that everything is still in place.
           </p>
         </div>
 
-        <section className="mt-12">
-          <div className="mb-6">
+        <section className="mt-12 lg:mt-[clamp(1rem,2dvh,3rem)]">
+          <div className="mb-6 lg:mb-[clamp(0.75rem,1.5dvh,1.5rem)]">
           <h2 className="text-xl font-semibold text-white">
               Choose your rhythm
             </h2>
@@ -189,7 +189,7 @@ export default function CheckInSettingsPage() {
                   key={option.days}
                   type="button"
                   onClick={() => setSelectedFrequency(option.days)}
-                  className={`relative rounded-2xl border p-5 text-left transition ${
+                  className={`relative rounded-2xl border p-5 lg:py-[clamp(0.75rem,1.5dvh,1.25rem)] text-left transition ${
                     selected
                       ? "border-slate-900 bg-slate-50 shadow-sm"
                       : "border-slate-200 bg-white hover:border-slate-400"
@@ -218,7 +218,7 @@ export default function CheckInSettingsPage() {
           <button
             type="button"
             onClick={() => setSelectedFrequency(0)}
-            className={`mt-4 w-full rounded-2xl border p-5 text-left transition ${
+            className={`mt-4 lg:mt-[clamp(0.5rem,1dvh,1rem)] w-full rounded-2xl border p-5 lg:py-[clamp(0.75rem,1.5dvh,1.25rem)] text-left transition ${
               isCustom
                 ? "border-slate-900 bg-slate-50 shadow-sm"
                 : "border-slate-200 bg-white hover:border-slate-400"
@@ -244,7 +244,7 @@ export default function CheckInSettingsPage() {
 
             {isCustom && (
               <div
-                className="mt-5 max-w-xs"
+                className="mt-5 lg:mt-3 max-w-xs"
                 onClick={(event) => event.stopPropagation()}
               >
                 <Input
@@ -260,12 +260,12 @@ export default function CheckInSettingsPage() {
           </button>
         </section>
 
-        <section className="mt-10 rounded-2xl bg-slate-50 p-6 md:p-8">
+        <section className="mt-10 rounded-2xl bg-slate-50 p-6 md:p-8 lg:mt-[clamp(1rem,2dvh,2.5rem)] lg:py-[clamp(0.75rem,1.5dvh,2rem)]">
           <h2 className="text-lg font-semibold text-slate-900">
             How Check-in works
           </h2>
 
-          <div className="mt-5 space-y-4 text-sm leading-6 text-slate-600">
+          <div className="mt-5 space-y-4 lg:mt-2 lg:space-y-2 text-sm leading-6 text-slate-600">
             <p>
               ETERPAX will ask you to confirm your Check-in according to the
               rhythm you choose.
@@ -282,7 +282,7 @@ export default function CheckInSettingsPage() {
           </div>
         </section>
 
-        <div className="mt-10 flex flex-col-reverse gap-3 border-t border-slate-200 pt-8 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-10 flex flex-col-reverse gap-3 border-t border-slate-200 pt-8 lg:mt-[clamp(1rem,2dvh,2.5rem)] lg:pt-[clamp(0.75rem,1.5dvh,2rem)] sm:flex-row sm:items-center sm:justify-between">
           <Link
             href="/dashboard"
             className="inline-flex items-center justify-center rounded-xl border border-white/70 bg-white px-5 py-3 text-sm font-medium text-[#0D2340] transition hover:bg-white/90"
