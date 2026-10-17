@@ -20,3 +20,14 @@ export function guardianVerificationQuestion() {
   }
   return { question, positive, negative };
 }
+
+// Identity copy is deliberately separate from dispatch/voting configuration.
+export function guardianVerificationIdentityQuestion(firstName: unknown): string {
+  const { question } = guardianVerificationQuestion();
+  if (typeof firstName !== "string" || !firstName.trim() || firstName.length > 200
+    || /[\p{Cc}\p{Cf}]/u.test(firstName) || !/\p{L}/u.test(firstName)
+    || !question.includes("[Owner's Name]")) {
+    throw new Error("GUARDIAN_VERIFICATION_IDENTITY_UNAVAILABLE");
+  }
+  return question.replaceAll("[Owner's Name]", () => firstName);
+}
