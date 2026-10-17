@@ -157,6 +157,14 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
                   </button>
                 </div>
+                <div className="mt-2 text-right">
+                  <Link
+                    href="/forgot-password"
+                    className="text-sm font-medium text-[#0F5C88] hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
               </div>
 
               {error && (
@@ -175,7 +183,7 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-8 text-center text-sm text-neutral-500">
-              Don't have an account?{" "}
+              Don&apos;t have an account?{" "}
               <Link
                 href="/create-account"
                 className="font-medium text-[#0F5C88] hover:underline"
