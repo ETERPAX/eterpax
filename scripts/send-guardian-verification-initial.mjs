@@ -37,17 +37,14 @@ async function main() {
   const {createClient}=require('@supabase/supabase-js');
   const {dispatchInitialGuardianVerification}=require(path.join(root,'guardian-verification-dispatch.ts'));
   const client=createClient(target.origin,process.env.SUPABASE_SECRET_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
-  const {guardianVerificationOrigin,guardianVerificationQuestion}=require(path.join(root,'guardian-verification-config.ts'));
+  const {guardianVerificationOrigin}=require(path.join(root,'guardian-verification-config.ts'));
   const origin=guardianVerificationOrigin();
-  const copy=guardianVerificationQuestion();
+  const {verifyGuardianVerificationContent}=require(path.join(root,'guardian-verification-content.ts'));
   // GET cannot vote. Refuse redirects, unavailable copy, or an unready deployment.
   const page=await fetch(origin+'/guardian-verification',{redirect:'error',signal:AbortSignal.timeout(5000)});
   if(!page.ok||!page.headers.get('content-type')?.includes('text/html'))throw new Error('page unavailable');
   const html=await page.text();
-  const escape=value=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);
-  if((html.match(/type="radio"/g)??[]).length!==2
-    ||!html.includes('value="positive"')||!html.includes('value="negative"')
-    ||![copy.question,copy.positive,copy.negative].every(value=>html.includes(escape(value))))throw new Error('deployed copy mismatch');
+  verifyGuardianVerificationContent(html);
   const endpoint=await fetch(origin+'/api/guardian-verification/respond',{
     method:'POST',redirect:'error',headers:{origin,'content-type':'application/json'},body:'{}',signal:AbortSignal.timeout(5000),
   });
