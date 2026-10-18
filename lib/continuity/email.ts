@@ -96,18 +96,30 @@ function providerOutcome(value: unknown): { state: State; code: string | null; m
   return { state: "uncertain", code: "PROVIDER_OUTCOME_UNKNOWN" };
 }
 
-/** Only call with the trusted client and environment after scheduler preflight.
+/** Only call with the trusted client and environment after server preflight.
  * No check_ins writes. `sent` means provider accepted, not inbox delivery.
  */
 export async function deliverContinuityEmails(
   supabase: SupabaseClient,
   environment: "test" | "production",
   stopAt = Date.now() + 45_000,
+  scope?: { userId: string; limit: number },
 ): Promise<DeliverySummary> {
+  const startedAt = Date.now();
   const counts: Record<Outcome, number> = { sent: 0, pending: 0, failed: 0, cancelled: 0, uncertain: 0, claimLost: 0, invalid: 0, error: 0 };
+  const report = (summary: DeliverySummary): DeliverySummary => {
+    console.info(JSON.stringify({ event: "continuity_email_delivery", scope: scope ? "owner" : "global",
+      elapsed_ms: Date.now() - startedAt, success: summary.success,
+      code: summary.code ?? null, counts: summary.counts }));
+    return summary;
+  };
+  if (scope !== undefined && (!scope || !isUuid(scope.userId)
+    || !Number.isInteger(scope.limit) || scope.limit < 1 || scope.limit > 2)) {
+    return report({ success: false, counts, code: "INVALID_DELIVERY_SCOPE" });
+  }
   // Resend may log raw provider errors outside production. Stop before claiming work.
   if (process.env.NODE_ENV !== "production") {
-    return { success: false, counts, code: "DELIVERY_REQUIRES_PRODUCTION_RUNTIME" };
+    return report({ success: false, counts, code: "DELIVERY_REQUIRES_PRODUCTION_RUNTIME" });
   }
   let link: string;
   let resend: Resend;
@@ -117,18 +129,26 @@ export async function deliverContinuityEmails(
     if (!process.env.RESEND_API_KEY?.trim()) throw new Error("MISSING_PROVIDER_KEY");
     // Pin the provider origin; do not permit the SDK's optional environment override.
     resend = new Resend(process.env.RESEND_API_KEY, { baseUrl: "https://api.resend.com" });
-  } catch { return { success: false, counts, code: "DELIVERY_CONFIGURATION_INVALID" }; }
-  if (stopAt - Date.now() < READ_MS + SEND_MS + RESERVE_MS) {
-    return { success: false, counts, code: "DELIVERY_BUDGET_EXHAUSTED" };
+  } catch { return report({ success: false, counts, code: "DELIVERY_CONFIGURATION_INVALID" }); }
+  if (stopAt - Date.now() < 5 * READ_MS + SEND_MS + RESERVE_MS) {
+    return report({ success: false, counts, code: "DELIVERY_BUDGET_EXHAUSTED" });
   }
 
   let claimed: unknown;
   try {
-    const { data, error } = await readWithin(supabase.rpc("claim_continuity_email_events"));
+    const { data, error } = await readWithin(scope
+      ? supabase.rpc("claim_continuity_email_events_for_owner", { p_user_id: scope.userId, p_limit: scope.limit })
+      : supabase.rpc("claim_continuity_email_events"));
     if (error) throw new Error("CLAIM_FAILED");
     claimed = data;
-  } catch { return { success: false, counts, code: "CLAIM_FAILED" }; }
-  if (!Array.isArray(claimed) || claimed.length > 25) return { success: false, counts, code: "INVALID_CLAIM_RESPONSE" };
+  } catch { return report({ success: false, counts, code: "CLAIM_FAILED" }); }
+  if (!Array.isArray(claimed) || claimed.length > (scope?.limit ?? 25)) return report({ success: false, counts, code: "INVALID_CLAIM_RESPONSE" });
+
+  // Fail closed before any finalization or send if the scoped RPC violates its contract.
+  if (scope && claimed.some(value => !isRow(value) || value.user_id !== scope.userId
+    || value.event_type !== "check_in_request")) {
+    return report({ success: false, counts, code: "CLAIM_SCOPE_MISMATCH" });
+  }
 
   async function finish(event: Event, state: State, code: string | null, messageId?: string) {
     const attempts = typeof event.attempt_count === "number" && Number.isFinite(event.attempt_count)
@@ -225,5 +245,5 @@ export async function deliverContinuityEmails(
       await finish(event, submitted ? "uncertain" : "pending", submitted ? "SEND_OUTCOME_UNKNOWN" : "PRE_SEND_READ_FAILED");
     }
   }
-  return { success: counts.error + counts.invalid + counts.claimLost + counts.failed + counts.uncertain + counts.pending === 0, counts };
+  return report({ success: counts.error + counts.invalid + counts.claimLost + counts.failed + counts.uncertain + counts.pending === 0, counts });
 }
