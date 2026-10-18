@@ -1,15 +1,19 @@
 import Stripe from "stripe";
 import { guardianAdmin, sendGuardianConfirmations, uuidPattern } from "@/lib/guardians/server";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 const idOf = (value: string | { id: string } | null | undefined) => typeof value === "string" ? value : value?.id;
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
+  const secretKey = process.env.STRIPE_SECRET_KEY;
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!signature || !webhookSecret) return Response.json({ error: "Missing webhook configuration" }, { status: 400 });
+  if (!signature?.trim() || !secretKey?.trim() || !webhookSecret?.trim()) return Response.json({ error: "Missing webhook configuration" }, { status: 400 });
+  let stripe: Stripe;
   let event: Stripe.Event;
-  try { event = stripe.webhooks.constructEvent(await request.text(), signature, webhookSecret); }
+  try {
+    stripe = new Stripe(secretKey);
+    event = stripe.webhooks.constructEvent(await request.text(), signature, webhookSecret);
+  }
   catch { return Response.json({ error: "Invalid webhook signature" }, { status: 400 }); }
 
   try {

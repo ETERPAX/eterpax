@@ -38,11 +38,23 @@ export async function dispatchInitialGuardianVerification(
     if (error || !participant || typeof participant.name !== "string" || typeof participant.email !== "string") {
       return { outcome: "snapshot_unavailable" };
     }
+    // Resolve identity from the escalation, never from caller-supplied names or IDs.
+    const { data: escalation, error: escalationError } = await supabase.from("guardian_escalations")
+      .select("user_id").eq("id", input.escalationId)
+      .abortSignal(AbortSignal.timeout(5_000)).maybeSingle();
+    if (escalationError || !escalation || typeof escalation.user_id !== "string"
+      || !uuid.test(escalation.user_id)) return { outcome: "owner_unavailable" };
+    const { data: { user: owner }, error: ownerError } = await supabase.auth.admin.getUserById(escalation.user_id);
+    if (ownerError || !owner || owner.id !== escalation.user_id) return { outcome: "owner_unavailable" };
+    const ownerName = owner.user_metadata?.firstName ?? owner.user_metadata?.display_name;
+    if (typeof ownerName !== "string" || !ownerName.replace(/[\r\n\u0000-\u001f\u007f]/g, " ").trim()) {
+      return { outcome: "owner_name_unavailable" };
+    }
     const { token, digest } = createGuardianVerificationToken();
     // Fragment never reaches HTTP/access logs. The page removes it immediately.
     const verificationUrl = `${origin}/guardian-verification#token=${token}`;
     const email = createGuardianVerificationEmail({ recipientName: participant.name,
-      ownerName: "An ETERPAX member", verificationUrl });
+      ownerName, verificationUrl });
     reservation = await reserveGuardianVerification(rpcClient, {
       escalationId: input.escalationId, guardianId: input.guardianId, tokenDigest: digest,
       recipientEmail: participant.email, subject: email.subject, emailText: email.text,

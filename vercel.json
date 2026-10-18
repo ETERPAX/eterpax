@@ -1,3 +1,12 @@
 {
-  "crons": []
+  "crons": [
+    {
+      "path": "/api/cron/continuity",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/message-recovery",
+      "schedule": "* * * * *"
+    }
+  ]
 }

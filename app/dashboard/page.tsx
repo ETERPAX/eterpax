@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { YourPlanModal } from "@/components/dashboard/YourPlanModal";
+import { useMessageDeletion } from "@/components/messages/useMessageDeletion";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -39,6 +41,7 @@ function isCheckInState(value: unknown): value is CheckInState {
 }
 
 export default function DashboardPage() {
+  const [showPlanModal, setShowPlanModal] = useState(false);
   const [guardianCount, setGuardianCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
@@ -55,8 +58,27 @@ export default function DashboardPage() {
     recipient_name: string;
     recipient_email: string;
     status: string;
+    deletion_state: string;
   }[]
 >([]);
+
+  const completedDeletions = useRef(new Set<string>());
+  const deletion = useMessageDeletion(() => {}, id => {
+    if (completedDeletions.current.has(id)) return;
+    completedDeletions.current.add(id);
+    setMessages(current => current.filter(message => message.id !== id));
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { count, error } = await supabase.from("messages")
+        .select("id", { count: "exact", head: true }).eq("user_id", user.id);
+      if (!error) setMessageCount(count ?? 0);
+    })().catch(() => { /* Keep the previous count if refresh is unavailable. */ });
+  });
+  const deletionLabels = {
+    deleting: "Deleting…", pending: "Cleanup pending", blocked: "Deletion blocked",
+    deleted: "Message deleted", unknown: "Result uncertain — check deletion status",
+  };
 
   useEffect(() => {
     const loadGuardianCount = async () => {
@@ -167,7 +189,7 @@ console.log("PROTECTION ERROR:", error);
       setMessageCount(count ?? 0);
       const { data: messageData, error: messageError } = await supabase
   .from("messages")
-  .select("id, recipient_name, recipient_email, status")
+  .select("id, recipient_name, recipient_email, status, deletion_state")
   .eq("user_id", user.id)
   .order("created_at", { ascending: false });
 
@@ -230,7 +252,7 @@ setMessages(messageData ?? []);
   const hasGuardians = guardianCount > 0;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#F7F8FA]">
+    <main className="relative min-h-dvh bg-[#F7F8FA]">
       {/* Background */}
       <div className="absolute inset-0">
         <img
@@ -242,8 +264,8 @@ setMessages(messageData ?? []);
         <div className="absolute inset-0 bg-black/10" />
       </div>
 
-      <div className="relative z-10 min-h-screen">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1500px] flex-col px-6 py-7 lg:px-10 lg:py-9">
+      <div className="relative z-10 min-h-dvh">
+        <div className="mx-auto flex min-h-dvh w-full max-w-[1500px] flex-col px-6 py-7 lg:px-10 lg:py-[clamp(0.5rem,1dvh,2.25rem)]">
           {/* Header */}
           <header className="flex items-start justify-between">
             <div>
@@ -251,7 +273,7 @@ setMessages(messageData ?? []);
                 ETERPAX
               </div>
 
-              <div className="mt-3 max-w-xs text-[10px] font-medium leading-4 tracking-[0.12em] text-white/70">
+              <div className="mt-3 max-w-xs text-[10px] font-medium leading-4 tracking-[0.12em] text-white/70 lg:mt-1 lg:leading-[1.4]">
                 Confidence is designed.
                 <br />
                 Trust is earned.
@@ -270,29 +292,29 @@ setMessages(messageData ?? []);
           </header>
 
           {/* Main */}
-          <div className="flex flex-1 items-center py-10">
+          <div className="flex flex-1 items-center py-10 lg:py-[clamp(0.5rem,1dvh,2.5rem)]">
             <div className="w-full">
               <div className="mx-auto max-w-6xl">
                 {/* Intro */}
-                <div className="mb-8 max-w-2xl">
+                <div className="mb-8 max-w-2xl lg:mb-[clamp(0.5rem,1dvh,2rem)]">
                   <p className="text-sm font-medium uppercase tracking-[0.24em] text-white/75">
                     Your ETERPAX
                   </p>
 
-                  <h1 className="mt-3 font-serif text-5xl leading-[1.05] tracking-tight text-white md:text-6xl lg:text-7xl">
+                  <h1 className="mt-3 font-serif text-5xl leading-[1.05] tracking-tight text-white md:text-6xl lg:mt-1 lg:text-[clamp(3rem,6.65dvh,4.5rem)]">
                     A place for what
                     <br />
                     you want to leave.
                   </h1>
 
-                  <p className="mt-6 max-w-xl text-lg leading-8 text-white/80">
+                  <p className="mt-6 max-w-xl text-lg leading-8 text-white/80 lg:mt-[clamp(0.25rem,0.5dvh,1.5rem)]">
                     Your words, your memories, and the things only you can
                     give.
                   </p>
                 </div>
 
                 {/* Messages — Main Card */}
-                <div className="rounded-[30px] border border-white/60 bg-white/95 p-7 shadow-2xl backdrop-blur-md md:p-9">
+                <div className="rounded-[30px] border border-white/60 bg-white/95 p-7 shadow-2xl backdrop-blur-md md:p-9 lg:py-[clamp(0.75rem,1.5dvh,2.25rem)]">
                   <div className="flex flex-col gap-7 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-start gap-5">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#0A7BA8]/10">
@@ -353,11 +375,11 @@ setMessages(messageData ?? []);
                 </div>
                
                 {/* Supporting Areas */}
-                <div className="mt-5 grid gap-5 md:grid-cols-3">
+                <div className="mt-5 grid gap-5 md:grid-cols-3 lg:mt-[clamp(0.5rem,1dvh,1.25rem)]">
                   {/* Guardians */}
                   <Link
                     href="/guardians"
-                    className="group rounded-[26px] border border-white/60 bg-white/90 p-6 shadow-xl backdrop-blur-md transition hover:-translate-y-1 hover:bg-white"
+                    className="group rounded-[26px] border border-white/60 bg-white/90 p-6 shadow-xl backdrop-blur-md lg:py-[clamp(0.75rem,1.5dvh,1.5rem)] transition hover:-translate-y-1 hover:bg-white"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0A7BA8]/10">
@@ -369,11 +391,11 @@ setMessages(messageData ?? []);
                       )}
                     </div>
 
-                    <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">
+                    <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">
                       Your Guardians
                     </p>
 
-                    <h3 className="mt-2 text-xl font-medium text-[#0D2340]">
+                    <h3 className="mt-2 lg:mt-1 text-xl font-medium text-[#0D2340]">
                       {hasGuardians
                         ? `${guardianCount} ${
                             guardianCount === 1 ? "Guardian" : "Guardians"
@@ -381,11 +403,11 @@ setMessages(messageData ?? []);
                         : "Not started"}
                     </h3>
 
-                    <p className="mt-2 text-sm leading-6 text-neutral-500">
+                    <p className="mt-2 lg:mt-1 text-sm leading-6 lg:leading-5 text-neutral-500">
                       People you trust to help carry out your ETERPAX protocol.
                     </p>
 
-                    <div className="mt-5 flex items-center text-sm font-medium text-[#17375E]">
+                    <div className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] flex items-center text-sm font-medium text-[#17375E]">
                       {hasGuardians ? "View Guardians" : "Choose your Guardians"}
                       <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />
                     </div>
@@ -393,7 +415,7 @@ setMessages(messageData ?? []);
 
                   {/* Check-in */}
                   <div
-                    className="group rounded-[26px] border border-white/60 bg-white/90 p-6 shadow-xl backdrop-blur-md transition hover:-translate-y-1 hover:bg-white"
+                    className="group rounded-[26px] border border-white/60 bg-white/90 p-6 shadow-xl backdrop-blur-md lg:py-[clamp(0.75rem,1.5dvh,1.5rem)] transition hover:-translate-y-1 hover:bg-white"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0A7BA8]/10">
@@ -401,21 +423,21 @@ setMessages(messageData ?? []);
                       </div>
                     </div>
 
-                    <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">
+                    <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">
                       Your Check-in
                     </p>
 
-                    <h3 className="mt-2 text-xl font-medium text-[#0D2340]">
+                    <h3 className="mt-2 lg:mt-1 text-xl font-medium text-[#0D2340]">
                     {checkInLoading ? "Loading..." : checkIn ? `Every ${checkIn.frequency_days} days` : checkInError ? "Unavailable" : "Not configured"}
                     </h3>
 
-                    <p className="mt-2 text-sm leading-6 text-neutral-500">
+                    <p className="mt-2 lg:mt-1 text-sm leading-6 lg:leading-5 text-neutral-500">
                       Stay connected with ETERPAX through your chosen
                       check-in schedule.
                     </p>
 
                     {checkIn && (
-                      <div className="mt-3 space-y-1 text-sm leading-6 text-neutral-500">
+                      <div className="mt-3 lg:mt-[clamp(0.375rem,0.75dvh,0.75rem)] space-y-1 lg:space-y-0 text-sm leading-6 lg:leading-5 text-neutral-500">
                         <p>{!checkIn.enabled ? "Check-ins paused" : checkIn.status === "scheduled" ? "Scheduled" : checkIn.status === "awaiting_response" ? "Awaiting your response" : "Escalation pending"}</p>
                         <p>Missed check-ins: {checkIn.missed_count}</p>
                         {checkIn.last_check_in_at && <p>Last confirmed: {new Date(checkIn.last_check_in_at).toLocaleString()}</p>}
@@ -429,45 +451,54 @@ setMessages(messageData ?? []);
                       onClick={confirmCheckIn}
                       disabled={checkInLoading || !checkIn || confirmingCheckIn}
                       aria-busy={confirmingCheckIn}
-                      className="mt-5 inline-flex items-center justify-center rounded-full bg-[#0A7BA8] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#08698F] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] inline-flex items-center justify-center rounded-full bg-[#0A7BA8] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#08698F] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {confirmingCheckIn ? "Confirming..." : "I'm OK"}
                     </button>
-                    {checkInSuccess && <p role="status" className="mt-3 text-sm text-[#0A7BA8]">Thank you. Your Check-in is confirmed.{checkIn && !checkIn.enabled ? " Check-ins remain paused." : ""}</p>}
-                    {checkInError && <p role="alert" className="mt-3 text-sm text-red-700">{checkInError}</p>}
+                    {checkInSuccess && <p role="status" className="mt-3 lg:mt-[clamp(0.375rem,0.75dvh,0.75rem)] text-sm text-[#0A7BA8]">Thank you. Your Check-in is confirmed.{checkIn && !checkIn.enabled ? " Check-ins remain paused." : ""}</p>}
+                    {checkInError && <p role="alert" className="mt-3 lg:mt-[clamp(0.375rem,0.75dvh,0.75rem)] text-sm text-red-700">{checkInError}</p>}
 
-                    <Link href="/check-in-settings" className="mt-5 flex items-center text-sm font-medium text-[#17375E]">
+                    <Link href="/check-in-settings" className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] flex items-center text-sm font-medium text-[#17375E]">
                     Manage Check-in
                       <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />
                     </Link>
                   </div>
 
                   {/* Protection */}
-                  <div className="rounded-[26px] border border-white/60 bg-white/90 p-6 shadow-xl backdrop-blur-md">
+                  <div className="rounded-[26px] border border-white/60 bg-white/90 p-6 shadow-xl backdrop-blur-md lg:py-[clamp(0.75rem,1.5dvh,1.5rem)]">
                     <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#0A7BA8]/10">
                       <ShieldCheck className="h-5 w-5 text-[#0A7BA8]" />
                     </div>
 
-                    <p className="mt-5 text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">
+                    <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">
                       Your Protection
                     </p>
 
-                    <h3 className="mt-2 text-xl font-medium text-[#0D2340]">
+                    <h3 className="mt-2 lg:mt-1 text-xl font-medium text-[#0D2340]">
   {protectionActive ? "Active" : "Not active"}
 </h3>
 
-                    <p className="mt-2 text-sm leading-6 text-neutral-500">
+                    <p className="mt-2 lg:mt-1 text-sm leading-6 lg:leading-5 text-neutral-500">
                       Protect your ETERPAX when you&apos;re ready.
                     </p>
 
-                    <p className="mt-5 text-sm font-medium text-neutral-400">
+                    <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-sm font-medium text-neutral-400">
                       Protection comes next
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowPlanModal(true)}
+                      aria-haspopup="dialog"
+                      className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded text-sm font-medium text-[#17375E] hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0A7BA8]"
+                    >
+                      View Your Plan
+                      <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
 
                 {/* Closing line */}
-                <div className="mt-8 text-center">
+                <div className="mt-8 text-center lg:mt-[clamp(0.5rem,1dvh,2rem)]">
                   <p className="text-sm tracking-wide text-white/70">
                     Private by design. Always in your control.
                   </p>
@@ -484,6 +515,7 @@ setMessages(messageData ?? []);
           </footer>
         </div>
       </div>
+      {showPlanModal && <YourPlanModal onClose={() => setShowPlanModal(false)} />}
       {showMessagesModal && (
   <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-6 backdrop-blur-sm">
     <div className="relative w-full max-w-4xl rounded-[32px] border border-white/70 bg-[#FCFBF8]/95 p-8 shadow-2xl md:p-10">
@@ -517,11 +549,16 @@ setMessages(messageData ?? []);
 </Link>
       </div>
 
+      {deletion.notice && <p role="status" className="mt-5 rounded-xl border border-neutral-300 bg-white p-4 text-sm text-[#0D2340]">{deletion.notice}</p>}
       <div className="mt-8 max-h-[360px] space-y-3 overflow-y-auto pr-2">
-  {messages.map((message) => (
+  {messages.map((message) => {
+    const state = deletion.states[message.id];
+    const pending = message.deletion_state === "deleting" || deletion.pending.includes(message.id);
+    const unavailable = pending || state === "unknown" || deletion.busy === message.id;
+    return (
     <div
       key={message.id}
-      className="flex items-center justify-between rounded-2xl border border-neutral-200 bg-white/80 px-5 py-4"
+      className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-2xl border border-neutral-200 bg-white/80 px-5 py-4"
     >
       <div className="min-w-0">
         <p className="truncate font-medium text-[#0D2340]">
@@ -533,7 +570,8 @@ setMessages(messageData ?? []);
         </p>
       </div>
 
-      <div className="ml-6 flex shrink-0 items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4 sm:ml-6">
+        {unavailable ? <span className="text-sm text-neutral-500">Edit unavailable</span> : <>
         <Link
           href={`/your-messages?message=${message.id}`}
           className="text-sm font-medium text-[#17375E] transition hover:text-[#0A7BA8]"
@@ -547,7 +585,26 @@ setMessages(messageData ?? []);
         >
           Preview
         </Link>
+        </>}
+        {(state || pending) && <span role="status" className="text-sm font-medium text-[#0D2340]">{state ? deletionLabels[state] : "Cleanup pending"}</span>}
+        {deletion.enabled && (pending || state === "unknown" ? (
+          <button type="button" disabled={deletion.busy !== null}
+            onClick={() => void deletion.run(message.id, "check")}
+            className="text-sm font-medium text-[#0A7BA8] underline disabled:opacity-50">Check deletion status</button>
+        ) : message.status === "draft" && message.deletion_state === "active" ? (
+          <button type="button" disabled={deletion.busy !== null}
+            onClick={() => void deletion.run(message.id, "delete", message.recipient_name)}
+            className="text-sm font-medium text-red-700 disabled:opacity-50">Delete Message</button>
+        ) : null)}
       </div>
+    </div>
+  );})}
+  {deletion.pending.filter(id => !messages.some(message => message.id === id)).map(id => (
+    <div key={id} className="rounded-xl border border-neutral-300 bg-white p-4 text-sm text-[#0D2340]">
+      <p role="status">{deletion.states[id] ? deletionLabels[deletion.states[id]] : "Cleanup pending"}</p>
+      {deletion.enabled && <button type="button" disabled={deletion.busy !== null}
+        onClick={() => void deletion.run(id, "check")}
+        className="mt-2 text-[#0A7BA8] underline disabled:opacity-50">Check deletion status</button>}
     </div>
   ))}
 </div>

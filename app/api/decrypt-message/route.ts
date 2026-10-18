@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { decryptDataKey } from "@/lib/kms";
-import { importAesKey, decryptText } from "@/lib/encryption";
+import { decryptStoredText, decryptionFailure } from "@/lib/messages/decrypt-content";
 
 export async function POST(request: Request) {
   const authorization = request.headers.get("authorization");
@@ -42,10 +41,10 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (error) {
-      return NextResponse.json({ error: "Unable to load message" }, { status: 500 });
+      return NextResponse.json({ error: "Unable to load message", code: "RECORD" }, { status: 500 });
     }
     if (!message || message.user_id !== user.id) {
-      return NextResponse.json({ error: "Message not found" }, { status: 404 });
+      return NextResponse.json({ error: "Message not found", code: "RECORD" }, { status: 404 });
     }
     if (
       message.body_encryption_version !== "v1" ||
@@ -53,15 +52,12 @@ export async function POST(request: Request) {
       typeof message.body_iv !== "string" || !message.body_iv ||
       typeof message.body_encrypted_key !== "string" || !message.body_encrypted_key
     ) {
-      return NextResponse.json({ error: "Invalid encrypted message data" }, { status: 422 });
+      return NextResponse.json({ error: "Invalid encrypted message data", code: "METADATA" }, { status: 422 });
     }
 
-    const encryptedKeyBytes = Buffer.from(message.body_encrypted_key, "base64");
-    const plaintextKey = await decryptDataKey(encryptedKeyBytes);
-    const aesKey = await importAesKey(plaintextKey);
-    const plaintext = await decryptText(message.body, message.body_iv, aesKey);
+    const plaintext = await decryptStoredText(message.body, message.body_iv, message.body_encrypted_key);
     return NextResponse.json({ plaintext }, { headers: { "Cache-Control": "no-store" } });
-  } catch {
-    return NextResponse.json({ error: "Unable to decrypt message" }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json(decryptionFailure(error), { status: 500, headers: { "Cache-Control": "no-store" } });
   }
 }

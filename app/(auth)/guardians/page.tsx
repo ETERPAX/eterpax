@@ -133,7 +133,7 @@ export default function GuardiansPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#F7F9FB] px-6 py-12">
+      <main className="min-h-dvh bg-[#F7F9FB] px-6 py-12">
         <div className="mx-auto max-w-4xl text-center text-sm text-neutral-500">
           Loading your Guardians...
         </div>
@@ -142,7 +142,7 @@ export default function GuardiansPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#102A43] px-6 py-10">
+    <main className="relative min-h-dvh bg-[#102A43] px-6 py-10 lg:py-[clamp(0.75rem,1.5dvh,2.5rem)]">
         <div className="absolute inset-0">
   <img
     src="/images/hero-payment-v1.jpg"
@@ -152,20 +152,20 @@ export default function GuardiansPage() {
   <div className="absolute inset-0 bg-transparent" />
   <div className="absolute inset-0 bg-black/5" />
 </div>
-<div className="relative z-10 mx-auto max-w-4xl space-y-8">
+<div className="relative z-10 mx-auto max-w-4xl space-y-8 lg:space-y-[clamp(0.75rem,1.5dvh,2rem)]">
 
         {/* HEADER */}
         <div>
   <Link
     href="/dashboard"
-    className="text-sm font-medium text-neutral-500 transition hover:text-[#0A7BA8]"
+    className="inline-flex cursor-pointer items-center rounded-xl border border-white/70 bg-white px-4 py-2 text-sm font-medium text-[#0D2340] transition hover:bg-white/90"
   >
     ← Back to Dashboard
   </Link>
 </div>
 
         {/* TITLE */}
-        <div className="space-y-3">
+        <div className="space-y-3 lg:space-y-1">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#0F5C88]/10">
             <Users className="h-6 w-6 text-[#0F5C88]" />
           </div>
@@ -181,7 +181,7 @@ export default function GuardiansPage() {
         </div>
 
         {/* ACTIVE PLAN CONTEXT */}
-        <div className="rounded-2xl border border-[#0A7BA8]/20 bg-white p-6">
+        <div className="rounded-2xl border border-[#0A7BA8]/20 bg-white p-6 lg:py-[clamp(0.75rem,1.5dvh,1.5rem)]">
           <div className="flex items-start gap-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
               <ShieldCheck className="h-5 w-5 text-[#0A7BA8]" />
@@ -192,7 +192,7 @@ export default function GuardiansPage() {
                 Your Guardians help ETERPAX follow your plan
               </h2>
 
-              <p className="mt-2 text-sm leading-7 text-[#496B8D]">
+              <p className="mt-2 lg:mt-1 text-sm leading-7 lg:leading-6 text-[#496B8D]">
                 Guardians do not receive your Messages and do not
                 control your ETERPAX account. Their role is limited to
                 helping ETERPAX follow the protocol you authorized.
@@ -202,7 +202,7 @@ export default function GuardiansPage() {
         </div>
 
         {/* GUARDIANS */}
-        <section className="space-y-4">
+        <section className="space-y-4 lg:space-y-[clamp(0.5rem,1dvh,1rem)]">
           <div>
             <h2 className="text-xl font-medium text-white">
               Your Guardians
@@ -213,7 +213,7 @@ export default function GuardiansPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-y-[clamp(0.5rem,1dvh,1rem)]">
             {guardians.map((guardian, index) => {
               const isOpen = openGuardian === index;
 
@@ -225,7 +225,7 @@ export default function GuardiansPage() {
               return (
                 <div
                   key={index}
-                  className="rounded-2xl border border-[#0A7BA8]/20 bg-white p-5 shadow-sm"
+                  className="rounded-2xl border border-[#0A7BA8]/20 bg-white p-5 lg:py-[clamp(0.75rem,1.5dvh,1.25rem)] shadow-sm"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -250,7 +250,7 @@ export default function GuardiansPage() {
                       <button
                         type="button"
                         onClick={() => setOpenGuardian(index)}
-                        className="text-[#0A7BA8] transition hover:text-[#08698F]"
+                        className="cursor-pointer text-[#0A7BA8] transition hover:text-[#08698F]"
                         aria-label={`Edit Guardian ${index + 1}`}
                       >
                         <Pencil className="h-4 w-4" />
@@ -259,7 +259,7 @@ export default function GuardiansPage() {
                   </div>
 
                   {!isOpen && (
-                    <div className="mt-5">
+                    <div className="mt-5 lg:mt-2">
                       {isComplete ? (
                         <div className="space-y-1">
                           <p className="text-sm text-neutral-600">
@@ -273,13 +273,13 @@ export default function GuardiansPage() {
                       ) : (
                         <>
                           <p className="text-sm text-neutral-500">
-                            Add this trusted person's information.
+                            Add this trusted person&apos;s information.
                           </p>
 
                           <button
                             type="button"
                             onClick={() => setOpenGuardian(index)}
-                            className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
+                            className="mt-4 lg:mt-2 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
                           >
                             <Pencil className="h-4 w-4" />
                             Add Guardian
@@ -290,7 +290,7 @@ export default function GuardiansPage() {
                   )}
 
                   {isOpen && (
-                    <div className="mt-5 space-y-4">
+                    <div className="mt-5 space-y-4 lg:mt-2 lg:space-y-2">
                       <Input
                         label="Guardian's Full Name"
                         placeholder="Enter full name"
@@ -336,7 +336,7 @@ export default function GuardiansPage() {
                           <button
                             type="button"
                             onClick={() => removeGuardian(index)}
-                            className="text-sm font-medium text-red-500 transition hover:text-red-600"
+                            className="cursor-pointer text-sm font-medium text-red-500 transition hover:text-red-600"
                           >
                             Remove
                           </button>
@@ -345,7 +345,7 @@ export default function GuardiansPage() {
                         <button
                           type="button"
                           onClick={() => setOpenGuardian(null)}
-                          className="ml-auto text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
+                          className="ml-auto cursor-pointer text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
                         >
                           Done
                         </button>
@@ -361,13 +361,13 @@ export default function GuardiansPage() {
               <button
                 type="button"
                 onClick={addGuardian}
-                className="flex min-h-[170px] flex-col items-center justify-center rounded-2xl border border-dashed border-[#0A7BA8]/40 bg-[#0A7BA8]/5 p-5 text-center transition hover:border-[#0A7BA8] bg-white hover:bg-[#0A7BA8]/10"
+                className="flex cursor-pointer min-h-[170px] lg:min-h-[clamp(7.5rem,15dvh,10.625rem)] flex-col items-center justify-center rounded-2xl border border-dashed border-[#0A7BA8]/40 bg-[#0A7BA8]/5 p-5 lg:py-[clamp(0.75rem,1.5dvh,1.25rem)] text-center transition hover:border-[#0A7BA8] bg-white hover:bg-[#0A7BA8]/10"
               >
                 <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm">
                   <Plus className="h-5 w-5 text-[#0A7BA8]" />
                 </div>
 
-                <h3 className="mt-3 font-medium text-[#0D2340]">
+                <h3 className="mt-3 lg:mt-1 font-medium text-[#0D2340]">
                   Add another Guardian
                 </h3>
 
@@ -380,7 +380,7 @@ export default function GuardiansPage() {
         </section>
 
         {/* MAJORITY */}
-        <div className="rounded-2xl border border-neutral-200 bg-white p-5">
+        <div className="rounded-2xl border border-neutral-200 bg-white p-5 lg:py-[clamp(0.5rem,1dvh,1.25rem)]">
           <p className="text-sm leading-6 text-neutral-600">
             With{" "}
             <strong className="text-[#0D2340]">
@@ -395,10 +395,10 @@ export default function GuardiansPage() {
         </div>
 
         {/* SAVE */}
-        <div className="flex flex-col items-center gap-4 border-t border-neutral-200 pt-6 sm:flex-row sm:justify-between">
+        <div className="flex flex-col items-center gap-4 border-t border-neutral-200 pt-6 lg:pt-[clamp(0.75rem,1.5dvh,1.5rem)] sm:flex-row sm:justify-between">
           <Link
             href="/dashboard"
-            className="text-sm font-medium text-neutral-500 transition hover:text-[#0A7BA8]"
+            className="inline-flex cursor-pointer items-center rounded-xl border border-white/70 bg-white px-4 py-2 text-sm font-medium text-[#0D2340] transition hover:bg-white/90"
           >
             Cancel
           </Link>
@@ -407,7 +407,7 @@ export default function GuardiansPage() {
             type="button"
             onClick={handleSave}
             disabled={!loaded || saving || showSavedNotice}
-            className="inline-flex items-center rounded-full bg-[#0A7BA8] px-10 py-4 font-medium text-white shadow-lg shadow-sky-500/10 transition hover:bg-[#08698F] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex cursor-pointer items-center rounded-full bg-[#0A7BA8] px-10 py-4 font-medium text-white shadow-lg shadow-sky-500/10 transition hover:bg-[#08698F] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save Changes"}
           </button>
