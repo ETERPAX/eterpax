@@ -175,7 +175,7 @@ export default function CheckInPage() {
                 </div>
 
                 <h3 className="mt-5 text-base font-medium text-[#102A43]">
-                  If you don't respond
+                  If you don&apos;t respond
                 </h3>
 
                 <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -294,7 +294,7 @@ export default function CheckInPage() {
           {/* Protocol */}
           <div className="mx-auto mt-8 max-w-4xl rounded-[28px] border border-[#C9E5EF] bg-[#F0F7FA] p-8 md:p-10">
             <h2 className="font-serif text-2xl font-light text-[#102A43] md:text-3xl">
-              If you don't respond
+              If you don&apos;t respond
             </h2>
 
             <p className="mt-4 text-sm leading-7 text-[#35627A]">

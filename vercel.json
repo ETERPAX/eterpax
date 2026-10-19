@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/message-recovery",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/recipient-delivery",
+      "schedule": "* * * * *"
     }
   ]
 }

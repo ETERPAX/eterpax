@@ -15,7 +15,7 @@ interface OnboardingSidebarProps {
         <div className="mt-8 h-px w-12 bg-[#C8A96A]" />
   
         <h2 className="mt-8 font-serif text-5xl leading-tight text-[#17375E]">
-          Let's Get
+          Let&apos;s Get
           <br />
           Started.
         </h2>

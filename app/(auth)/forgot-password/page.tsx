@@ -96,7 +96,7 @@ export default function ForgotPasswordPage() {
                 Forgot your password?
               </h1>
               <p className="mt-3 text-base text-neutral-600">
-                Enter your email and we'll send instructions to reset your password.
+                Enter your email and we&apos;ll send instructions to reset your password.
               </p>
             </div>
 
@@ -121,7 +121,7 @@ export default function ForgotPasswordPage() {
               {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
               {sent && (
                 <p role="status" className="text-sm text-[#0F5C88]">
-                  If an account exists for this email, we've sent password reset instructions.
+                  If an account exists for this email, we&apos;ve sent password reset instructions.
                 </p>
               )}
 

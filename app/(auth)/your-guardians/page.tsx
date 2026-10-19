@@ -370,7 +370,7 @@ export default function YourGuardiansPage() {
                       ) : (
                         <>
                           <p className="text-sm text-neutral-500">
-                            Add this trusted person's information.
+                            Add this trusted person&apos;s information.
                           </p>
 
                           <button
