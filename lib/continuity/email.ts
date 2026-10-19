@@ -168,6 +168,28 @@ export async function deliverContinuityEmails(
   }
 
   async function check(event: Event): Promise<string | null> {
+    if (event.event_type === "owner_safety_window") {
+      if (!isUuid(event.escalation_id) || !isUuid(event.user_id) || !isUuid(event.check_in_id)) return "INVALID_EVENT";
+      const lease = timestamp(event.lease_expires_at);
+      const deadline = timestamp(event.response_deadline_at);
+      const now = BigInt(Date.now()) * BigInt(1000);
+      if (lease === null || lease <= now) return "CLAIM_EXPIRED_OR_INVALID";
+      if (deadline === null || deadline <= now) return "WINDOW_EXPIRED";
+      const { data, error } = await readWithin(supabase.from("guardian_escalations")
+        .select("id,user_id,check_in_id,generation,status,closed_at,owner_checked_in_at,guardian_verification_rounds(majority_reached_at,safety_deadline_at),check_ins(user_id,enabled,status,escalation_generation)")
+        .eq("id", event.escalation_id).maybeSingle());
+      if (error) throw new Error("SAFETY_WINDOW_READ_FAILED");
+      if (!isRow(data) || data.user_id !== event.user_id || data.check_in_id !== event.check_in_id
+        || data.status !== "safety_window" || data.closed_at !== null || data.owner_checked_in_at !== null) return "SAFETY_WINDOW_INACTIVE";
+      const round = data.guardian_verification_rounds;
+      const parent = data.check_ins;
+      if (!isRow(parent) || parent.user_id !== event.user_id || parent.enabled !== true
+        || parent.status !== "escalation_pending" || parent.escalation_generation !== data.generation) return "OWNER_WINDOW_MISMATCH";
+      if (!isRow(round) || timestamp(round.safety_deadline_at) !== deadline) return "WINDOW_MISMATCH";
+      const majority = timestamp(round.majority_reached_at);
+      if (majority === null || deadline - majority !== BigInt(48 * 3600 * 1_000_000)) return "INVALID_WINDOW";
+      return null;
+    }
     const preliminary = cancellationCode(event, null);
     if (preliminary !== "CHECK_IN_MISSING") return preliminary;
     const { data, error } = await readWithin(supabase.from("check_ins")
@@ -209,16 +231,21 @@ export async function deliverContinuityEmails(
         || user.email.length > 254 || !/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(user.email)) {
         await finish(event, "failed", "AUTH_RECIPIENT_INVALID"); continue;
       }
-      const text = `Your ETERPAX Check-in\n\nPlease sign in to ETERPAX and select “I'm OK” on your Dashboard by ${event.response_deadline_at}.\n\nSign in: ${link}\n\nOpening this email or link does not confirm your Check-in.`;
+      const safety = event.event_type === "owner_safety_window";
+      const heading = "IN 48 HOURS, YOUR ETERPAX CONTINUITY PROTOCOL WILL PROCEED UNLESS YOU CONFIRM YOU ARE OKAY.";
+      const button = "I’M OKAY — STOP THE PROTOCOL";
+      const escape = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      const safetyText = `${heading}\n\nYour guardians have reached a majority. The window began when that majority was reached; this email does not restart it. Your deadline is ${event.response_deadline_at} (UTC).\n\n${button}: ${link}\n\nSign in to your own account, then select “I'm OK” on your Dashboard to stop the active protocol. Opening this email or link does not cancel it.`;
+      const text = safety ? safetyText : `Your ETERPAX Check-in\n\nPlease sign in to ETERPAX and select “I'm OK” on your Dashboard by ${event.response_deadline_at}.\n\nSign in: ${link}\n\nOpening this email or link does not confirm your Check-in.`;
       const { data: current, error: ownershipError } = await readWithin(supabase.from("continuity_email_outbox")
-        .select("id, user_id, check_in_id, event_type, response_deadline_at, delivery_status, claim_token, lease_expires_at")
+        .select("id, user_id, check_in_id, event_type, escalation_id, response_deadline_at, delivery_status, claim_token, lease_expires_at")
         .eq("id", event.id).eq("delivery_status", "processing").eq("claim_token", event.claim_token).maybeSingle());
       if (ownershipError) throw new Error("OWNERSHIP_READ_FAILED");
       if (!current) { counts.claimLost++; continue; }
       if (!isRow(current) || current.id !== event.id || current.claim_token !== event.claim_token || current.delivery_status !== "processing") {
         counts.claimLost++; continue;
       }
-      if (current.user_id !== event.user_id || current.check_in_id !== event.check_in_id
+      if ((safety && current.escalation_id !== event.escalation_id) || current.user_id !== event.user_id || current.check_in_id !== event.check_in_id
         || current.event_type !== event.event_type || timestamp(current.response_deadline_at) !== timestamp(event.response_deadline_at)) {
         await finish(event, "cancelled", "EVENT_IDENTITY_CHANGED"); continue;
       }
@@ -231,13 +258,14 @@ export async function deliverContinuityEmails(
       // 6.28.1 forwards request options to fetch, including signal. Its public
       // options type omits signal; use a structural extension, not a global patch.
       const options: Parameters<typeof resend.emails.send>[1] & { signal: AbortSignal } = {
-        idempotencyKey: `eterpax:${environment}:check_in_request:${event.id}`,
+        idempotencyKey: `eterpax:${environment}:${event.event_type}:${event.id}`,
         signal: AbortSignal.timeout(SEND_MS),
       };
       submitted = true;
       const result: unknown = await resend.emails.send({
         from: "ETERPAX <hello@eterpax.com>", to: user.email,
-        subject: "Your ETERPAX Check-in", text,
+        subject: safety ? "ETERPAX — Important: Your 48-Hour Safety Window Has Started" : "Your ETERPAX Check-in", text,
+        ...(safety ? { html: `<div style="background:#f4f3ef;padding:32px;font-family:Arial,sans-serif;color:#071B2E"><div style="max-width:600px;margin:auto;background:white;padding:32px"><p style="letter-spacing:6px;font-size:24px">ETERPAX</p><h1 style="font-size:22px;line-height:1.5">${heading}</h1><p>Your guardians have reached a majority. This email does not restart the safety window.</p><p>Deadline (UTC): ${escape(String(event.response_deadline_at))}</p><p>Sign in to your own account, then select <strong>I'm OK</strong> on your Dashboard to stop the active protocol.</p><p><a href="${escape(link)}" style="display:inline-block;background:#071B2E;color:white;padding:16px;text-decoration:none">${button}</a></p><p>Opening this email or link does not cancel the protocol.</p></div></div>` } : {}),
       }, options);
       const outcome = providerOutcome(result);
       await finish(event, outcome.state, outcome.code, outcome.messageId);
