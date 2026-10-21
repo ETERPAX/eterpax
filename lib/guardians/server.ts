@@ -1,3 +1,4 @@
+import { withEmailPresentation } from "../email/presentation";
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
@@ -22,7 +23,7 @@ export async function authenticateOwner(request: Request) {
 }
 
 export function confirmationEmail(displayName: unknown) {
-  // Plain text only; never insert names into HTML or headers.
+  // Preserve the plain-text name normalization; presentation escapes HTML separately.
   const name = typeof displayName === "string" && displayName.trim()
     ? displayName.replace(/[\r\n\u0000-\u001f\u007f]/g, " ").trim().slice(0, 100)
     : "An ETERPAX member";
@@ -80,7 +81,7 @@ export async function sendGuardianConfirmations(admin: SupabaseClient, userId: s
       const options: Parameters<typeof resend.emails.send>[1] & { signal: AbortSignal } = {
         idempotencyKey: `guardian-confirmation:${row.id}`, signal: AbortSignal.timeout(10_000),
       };
-      const result = await resend.emails.send({ from: "ETERPAX <hello@eterpax.com>", to: row.email, ...email }, options);
+      const result = await resend.emails.send(withEmailPresentation({ from: "ETERPAX <hello@eterpax.com>", to: row.email, ...email }), options);
       if (!result.error && result.data?.id) { status = "sent"; providerId = result.data.id; }
       else if (result.error) logGuardianSendFailure(row.id, "provider_error", result.error);
       else logGuardianSendFailure(row.id, "missing_provider_id");

@@ -1,3 +1,4 @@
+import { withEmailPresentation } from "../email/presentation";
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -262,11 +263,11 @@ export async function deliverContinuityEmails(
         signal: AbortSignal.timeout(SEND_MS),
       };
       submitted = true;
-      const result: unknown = await resend.emails.send({
+      const result: unknown = await resend.emails.send(withEmailPresentation({
         from: "ETERPAX <hello@eterpax.com>", to: user.email,
         subject: safety ? "ETERPAX — Important: Your 48-Hour Safety Window Has Started" : "Your ETERPAX Check-in", text,
-        ...(safety ? { html: `<div style="background:#f4f3ef;padding:32px;font-family:Arial,sans-serif;color:#071B2E"><div style="max-width:600px;margin:auto;background:white;padding:32px"><p style="letter-spacing:6px;font-size:24px">ETERPAX</p><h1 style="font-size:22px;line-height:1.5">${heading}</h1><p>Your guardians have reached a majority. This email does not restart the safety window.</p><p>Deadline (UTC): ${escape(String(event.response_deadline_at))}</p><p>Sign in to your own account, then select <strong>I'm OK</strong> on your Dashboard to stop the active protocol.</p><p><a href="${escape(link)}" style="display:inline-block;background:#071B2E;color:white;padding:16px;text-decoration:none">${button}</a></p><p>Opening this email or link does not cancel the protocol.</p></div></div>` } : {}),
-      }, options);
+        ...(safety ? { html: `<h1 style="margin:0 0 24px;color:#071B2E;font-size:22px;line-height:1.5">${heading}</h1><p style="margin:0 0 20px">Your guardians have reached a majority. This email does not restart the safety window.</p><p style="margin:0 0 20px">Deadline (UTC): ${escape(String(event.response_deadline_at))}</p><p style="margin:0 0 20px">Sign in to your own account, then select <strong>I'm OK</strong> on your Dashboard to stop the active protocol.</p><table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:8px 0 24px"><tr><td bgcolor="#071B2E" style="background:#071B2E;mso-padding-alt:16px"><a href="${escape(link)}" style="display:inline-block;background:#071B2E;color:#ffffff;padding:16px;text-decoration:none;font-size:16px;line-height:1.5">${button}</a></td></tr></table><p style="margin:0 0 20px">Opening this email or link does not cancel the protocol.</p>` } : {}),
+      }), options);
       const outcome = providerOutcome(result);
       await finish(event, outcome.state, outcome.code, outcome.messageId);
     } catch {

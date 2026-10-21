@@ -1,0 +1,10 @@
+Subject: Your private messages are ready — ETERPAX
+
+Messages have been entrusted to you through ETERPAX.
+
+Open your private collection:
+https://example.invalid/recipient#PREVIEW_ONLY_NOT_A_REAL_TOKEN
+
+This personal link expires on 2030-01-09T12:00:00.000Z. Keep it private: anyone with this link can access your collection.
+
+No private message content is included in this email.

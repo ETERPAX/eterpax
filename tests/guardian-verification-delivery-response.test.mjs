@@ -1,3 +1,4 @@
+import { presentation } from './helpers/email-presentation.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -81,7 +82,7 @@ function harness(options = {}) {
     const exports={}; cache.set(file,exports);
     const compiled=ts.transpileModule(readFileSync(new URL(file,root),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
     vm.runInNewContext(compiled,{exports,process:{env},Response,Request,URL,Buffer,Date,AbortSignal,
-      require(name) {
+      require(name) { if(name==='../email/presentation')return presentation;
         if(name==='server-only')return {};
         if(name.startsWith('node:'))return require(name);
         if(name.startsWith('./'))return load(path.posix.join(path.posix.dirname(file),name)+'.ts');

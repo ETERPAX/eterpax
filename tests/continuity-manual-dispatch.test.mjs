@@ -1,3 +1,4 @@
+import { presentation } from './helpers/email-presentation.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -11,7 +12,7 @@ function load(file, env, mocks) {
     compilerOptions: { module: 1, target: 7 },
   }).outputText;
   vm.runInNewContext(code, { exports, process: { env }, URL, Response, Date, AbortSignal, Buffer,
-    setTimeout, clearTimeout, require: name => name === 'server-only' ? {} : mocks[name] ?? require(name) });
+    setTimeout, clearTimeout, require: name => name === '../email/presentation' ? presentation : name === 'server-only' ? {} : mocks[name] ?? require(name) });
   return exports;
 }
 const env = { NODE_ENV: 'production', CONTINUITY_ENVIRONMENT: 'production',

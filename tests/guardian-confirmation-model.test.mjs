@@ -1,3 +1,4 @@
+import { presentation } from './helpers/email-presentation.mjs';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
@@ -100,7 +101,7 @@ function harness() {
     const exports = {};
     const compiled = ts.transpileModule(read(file), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true } }).outputText;
     vm.runInNewContext(compiled, { exports, console: { error: (...args) => state.logs.push(args) }, process: { env }, Response, Request, Date, AbortSignal,
-      require(name) {
+      require(name) { if(name==='../email/presentation')return presentation;
         if (name === 'server-only') return {};
         if (name === '@/lib/guardians/server') return load('lib/guardians/server.ts');
         if (name === '@supabase/supabase-js') return { createClient(_url, key) {

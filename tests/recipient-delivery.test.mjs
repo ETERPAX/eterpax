@@ -1,3 +1,4 @@
+import { presentation } from './helpers/email-presentation.mjs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -10,7 +11,7 @@ function load(file,deps={},config=env){
  const exports={};
  const source=ts.transpileModule(readFileSync(file,'utf8'),{compilerOptions:{module:1,target:9}}).outputText;
  vm.runInNewContext(source,{exports,process:{env:config},Buffer,URL,Response,Request,ReadableStream,Uint8Array,TextDecoder,AbortSignal,setTimeout,clearTimeout,Date,console:{info(){}},
- require(name){if(name==='server-only')return {};if(name in deps)return deps[name];if(name==='node:crypto')return require(name);throw Error(name);}});
+ require(name){if(name==='../email/presentation')return presentation;if(name==='server-only')return {};if(name in deps)return deps[name];if(name==='node:crypto')return require(name);throw Error(name);}});
  return exports;
 }
 const core=load('lib/recipient-delivery/core.ts');

@@ -1,3 +1,4 @@
+import { withEmailPresentation } from "../email/presentation";
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
@@ -22,10 +23,10 @@ export async function deliverRecipients(client: SupabaseClient, resend: Resend, 
       const options: Parameters<typeof resend.emails.send>[1] & { signal: AbortSignal } = {
         idempotencyKey: `eterpax:recipient-delivery:${job.id}`, signal: AbortSignal.timeout(10_000),
       };
-      result = classifySend(await resend.emails.send({ from: 'ETERPAX <hello@eterpax.com>', to: reserve.data[0].email,
+      result = classifySend(await resend.emails.send(withEmailPresentation({ from: 'ETERPAX <hello@eterpax.com>', to: reserve.data[0].email,
         subject: 'Your private messages are ready — ETERPAX',
         text: `Messages have been entrusted to you through ETERPAX.\n\nOpen your private collection:\n${origin}/recipient#${token}\n\nThis personal link expires on ${reserve.data[0].expires_at}. Keep it private: anyone with this link can access your collection.\n\nNo private message content is included in this email.`,
-      }, options));
+      }), options));
     } catch { /* Submission may have happened. No retry. */ }
     const finish = await client.rpc('finish_recipient_send', { p_id: job.id, p_claim: job.claim_token,
       p_outcome: result.outcome, p_provider_id: result.providerId }).abortSignal(AbortSignal.timeout(5000));

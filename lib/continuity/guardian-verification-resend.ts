@@ -1,3 +1,4 @@
+import { withEmailPresentation } from "../email/presentation";
 import "server-only";
 
 import { Resend } from "resend";
@@ -44,12 +45,12 @@ export async function sendGuardianVerificationEmail(input: SendInput) {
 
   try {
     const result = await resend.emails.send(
-      {
+      withEmailPresentation({
         from: GUARDIAN_VERIFICATION_FROM,
         to: input.recipientEmail,
         subject: input.subject,
         text: input.text,
-      },
+      }),
       options
     );
 

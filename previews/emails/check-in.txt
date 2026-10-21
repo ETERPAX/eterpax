@@ -1,0 +1,9 @@
+Subject: Your ETERPAX Check-in
+
+Your ETERPAX Check-in
+
+Please sign in to ETERPAX and select “I'm OK” on your Dashboard by 2030-01-02T12:00:00.000Z.
+
+Sign in: https://example.invalid/login
+
+Opening this email or link does not confirm your Check-in.
