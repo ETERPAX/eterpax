@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/recipient-delivery",
       "schedule": "* * * * *"
+    },
+    {
+      "path": "/api/cron/welcome-email",
+      "schedule": "* * * * *"
     }
   ]
 }

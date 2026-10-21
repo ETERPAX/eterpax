@@ -36,6 +36,13 @@ function harness() {
       assert(['guardians','guardian_notifications'].includes(table));
       const filters = []; let changes;
       const query = {
+        abortSignal(signal) { assert(signal instanceof AbortSignal); return query; },
+        async maybeSingle() {
+          assert.equal(table, 'guardians');
+          assert(filters.some(([key, value]) => key === 'user_id' && value === owner));
+          assert(filters.some(([key]) => key === 'id'));
+          return { data: state.nameReadFailure ? null : state.guardians.find(row => filters.every(([key,value]) => row[key] === value)) ?? null, error: state.nameReadFailure ? {} : null };
+        },
         update(value) { changes = value; return query; },
         eq(key, value) { filters.push([key, value]); return query; },
         select() {
@@ -221,12 +228,27 @@ test('overlapping workers claim at most once in the mocked atomic contract', asy
   assert.equal(h.state.sends.length,2);
 });
 
-test('neutral plain-text email has no links, buttons, tokens, or private content reads', () => {
-  const h=harness(); const email=h.helpers.confirmationEmail('<script>alert(1)</script>\nName');
-  assert.equal(email.html,undefined); assert(!email.subject.includes('<script>'));
-  assert.match(email.text,/there is nothing you need to do/); assert.match(email.text,/their/);
-  assert(!/https?:|Accept|Decline|token=/.test(email.text));
-  assert.match(h.helpers.confirmationEmail(undefined).text,/An ETERPAX member/);
+test('approved informational copy uses both names and contains no actions or links', () => {
+  const h = harness(); const email = h.helpers.confirmationEmail('Alex', 'Morgan Example');
+  assert.equal(email.subject, "You've Been Chosen as an ETERPAX Guardian");
+  assert.equal(email.text, [
+    'Dear Morgan,',
+    'Alex has chosen you as one of their trusted Guardians on ETERPAX.',
+    'Being a Guardian means you may be asked to help confirm their situation if ETERPAX is unable to reach them after multiple check-ins.',
+    'You will never be asked to access their private messages or make decisions about their content.',
+    'Your role is simply to help ensure their wishes are respected.',
+    'Thank you for being someone they trust.',
+    'Confidence is designed. Trust is earned. Continuity is intentional.',
+    'The ETERPAX Team',
+  ].join('\n\n'));
+  assert(!/<a\b|<button\b|href=|token=|Accept|Decline/i.test(email.html));
+  assert(!/https?:|token=/.test(email.text));
+  const hostile = h.helpers.confirmationEmail('<script>alert(1)</script>\nName', '<img> Morgan');
+  assert(!/<script|<img/.test(hostile.html)); assert(hostile.html.includes('&lt;img&gt;'));
+  const urlName = h.helpers.confirmationEmail('https://example.invalid', 'https://example.invalid');
+  assert(!/<a\b|href=/.test(urlName.html));
+  assert.match(h.helpers.confirmationEmail(undefined, 'Morgan').text, /An ETERPAX member/);
+  assert.throws(() => h.helpers.confirmationEmail('Alex', ' \n'));
   assert(!/from\(["'](?:messages|message_photos|message_videos|message_documents)["']\)/.test(read('lib/guardians/server.ts')));
 });
 
@@ -488,4 +510,30 @@ test('successful send remains sent with provider ID and timestamp, without failu
   assert.equal(h.state.logs.length, 0);
   assert(h.state.notifications.every(n => n.status === 'sent' && n.provider_message_id === 'confirmed-provider-id' && n.sent_at));
   await save(h, existing(h)); assert.equal(h.state.sends.length, 2);
+});
+
+test('each claimed Guardian receives their own first name and the authenticated owner name', async () => {
+  const h = harness(); h.state.active = true; h.state.activation = iso(1700000000);
+  await save(h, [{ ...input(1), name: 'Morgan Example' }, { ...input(2), name: 'Taylor Example' }]);
+  assert.equal(h.state.sends.length, 2);
+  for (const [index, firstName] of ['Morgan', 'Taylor'].entries()) {
+    const { email } = h.state.sends[index];
+    assert.equal(email.to, `g${index + 1}@example.com`);
+    assert(email.text.startsWith(`Dear ${firstName},`));
+    assert(email.text.includes('<b>Alex</b> has chosen you'));
+    assert(email.html.includes('&lt;b&gt;Alex&lt;/b&gt; has chosen you'));
+    assert(!/<a\b|href=|<button\b/.test(email.html));
+  }
+  await h.helpers.sendGuardianConfirmations(h.admin, owner);
+  assert.equal(h.state.sends.length, 2);
+});
+
+test('name read failures do not send an incorrect greeting or requeue a claimed notification', async () => {
+  const h = harness(); h.state.active = true; h.state.activation = iso(1700000000); h.state.nameReadFailure = true;
+  await save(h, [input(1), input(2)]);
+  assert.equal(h.state.sends.length, 0);
+  assert(h.state.notifications.every(row => row.status === 'uncertain'));
+  h.state.nameReadFailure = false;
+  await h.helpers.sendGuardianConfirmations(h.admin, owner);
+  assert.equal(h.state.sends.length, 0);
 });

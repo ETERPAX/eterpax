@@ -39,8 +39,9 @@ export function emailFixtures() {
   const recipientPayload = Object.fromEntries(['subject', 'text'].map(name => [name, evaluate(find(recipient,
     node => ts.isPropertyAssignment(node) && node.name.getText() === name).initializer, recipientScope)]));
   return {
+    'welcome': load('lib/welcome/email.ts').welcomeEmail('Alex Example'),
     'check-in': continuity(false),
-    'guardian-invitation': load('lib/guardians/server.ts').confirmationEmail('Alex Example'),
+    'guardian-invitation': load('lib/guardians/server.ts').confirmationEmail('Alex Example', 'Morgan Example'),
     'guardian-verification': load('lib/continuity/guardian-verification-email.ts').createGuardianVerificationEmail({
       recipientName: 'Morgan Example', ownerName: 'Alex Example', verificationUrl: 'https://example.invalid/guardian-verification#token=PREVIEW_ONLY_NOT_A_REAL_TOKEN',
     }),

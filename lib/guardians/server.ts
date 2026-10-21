@@ -1,4 +1,4 @@
-import { withEmailPresentation } from "../email/presentation";
+import { emailFrame, emailTagline, escapeEmailHtml } from "../email/presentation";
 import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
@@ -22,14 +22,26 @@ export async function authenticateOwner(request: Request) {
   return error ? null : user;
 }
 
-export function confirmationEmail(displayName: unknown) {
-  // Preserve the plain-text name normalization; presentation escapes HTML separately.
-  const name = typeof displayName === "string" && displayName.trim()
-    ? displayName.replace(/[\r\n\u0000-\u001f\u007f]/g, " ").trim().slice(0, 100)
-    : "An ETERPAX member";
+export function confirmationEmail(displayName: unknown, guardianName: unknown) {
+  const clean = (value: unknown) => typeof value === "string"
+    ? value.replace(/[\r\n\u0000-\u001f\u007f]/g, " ").trim().slice(0, 254) : "";
+  const owner = clean(displayName).slice(0, 100) || "An ETERPAX member";
+  const firstName = clean(guardianName).split(/\s+/)[0];
+  if (!firstName) throw new Error("GUARDIAN_NAME_REQUIRED");
+  const paragraphs = [
+    `Dear ${firstName},`,
+    `${owner} has chosen you as one of their trusted Guardians on ETERPAX.`,
+    "Being a Guardian means you may be asked to help confirm their situation if ETERPAX is unable to reach them after multiple check-ins.",
+    "You will never be asked to access their private messages or make decisions about their content.",
+    "Your role is simply to help ensure their wishes are respected.",
+    "Thank you for being someone they trust.",
+  ];
+  // Informational only: escape names without auto-linking any supplied text.
+  const body = paragraphs.map(paragraph => `<p style="margin:0 0 20px">${escapeEmailHtml(paragraph)}</p>`).join("");
   return {
-    subject: "You have been chosen as an ETERPAX Guardian",
-    text: `${name} has chosen you as one of their ETERPAX Guardians.\n\nBeing chosen as a Guardian means that ${name} trusts you to help protect the continuity of their ETERPAX plan.\n\nAs a Guardian, you will never have access to their private messages, photos, documents, voice recordings, or videos.\n\nIf ETERPAX is ever unable to confirm their well-being through regular check-ins, you will be contacted with clear instructions on what to do next.\n\nFor now, there is nothing you need to do.\n\nThis message simply confirms the trust ${name} has placed in you.\n\nConfidence is designed. Trust is earned. Continuity is intentional.\n\nETERPAX`,
+    subject: "You've Been Chosen as an ETERPAX Guardian",
+    text: [...paragraphs, emailTagline, "The ETERPAX Team"].join("\n\n"),
+    html: emailFrame(body).replace(`${emailTagline}</p>`, `${emailTagline}<br><br>The ETERPAX Team</p>`),
   };
 }
 
@@ -70,18 +82,23 @@ export async function sendGuardianConfirmations(admin: SupabaseClient, userId: s
   if (process.env.NODE_ENV !== "production" || !process.env.RESEND_API_KEY?.trim()) return false;
   const { data: { user }, error: userError } = await admin.auth.admin.getUserById(userId);
   if (userError || !user || user.id !== userId) return false;
-  const email = confirmationEmail(user.user_metadata?.firstName ?? user.user_metadata?.display_name);
+  const ownerName = user.user_metadata?.firstName ?? user.user_metadata?.display_name;
   const { data, error } = await admin.rpc("claim_guardian_notifications", { p_user_id: userId });
   if (error || !Array.isArray(data) || data.length > 6) return false;
   const resend = new Resend(process.env.RESEND_API_KEY, { baseUrl: "https://api.resend.com" });
-  const results = await Promise.all(data.map(async (row: { id: string; email: string }) => {
+  const results = await Promise.all(data.map(async (row: { id: string; email: string; guardian_id: string }) => {
     let status = "uncertain";
     let providerId: string | null = null;
     try {
+      const { data: guardian, error: nameError } = await admin.from("guardians")
+        .select("name").eq("id", row.guardian_id).eq("user_id", userId)
+        .abortSignal(AbortSignal.timeout(5_000)).maybeSingle();
+      if (nameError || !guardian) throw new Error("GUARDIAN_NAME_UNAVAILABLE");
+      const email = confirmationEmail(ownerName, guardian.name);
       const options: Parameters<typeof resend.emails.send>[1] & { signal: AbortSignal } = {
         idempotencyKey: `guardian-confirmation:${row.id}`, signal: AbortSignal.timeout(10_000),
       };
-      const result = await resend.emails.send(withEmailPresentation({ from: "ETERPAX <hello@eterpax.com>", to: row.email, ...email }), options);
+      const result = await resend.emails.send({ from: "ETERPAX <hello@eterpax.com>", to: row.email, ...email }, options);
       if (!result.error && result.data?.id) { status = "sent"; providerId = result.data.id; }
       else if (result.error) logGuardianSendFailure(row.id, "provider_error", result.error);
       else logGuardianSendFailure(row.id, "missing_provider_id");

@@ -84,7 +84,7 @@ const handleContinue = async () => {
     return;
   }
 
-  const { data, error: signUpError } = await supabase.auth.signUp({
+  const { error: signUpError } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -101,8 +101,6 @@ const handleContinue = async () => {
     setLoading(false);
     return;
   }
-
-  console.log("ACCOUNT CREATED:", data.user);
 
   setLoading(false);
   window.location.href = "/dashboard";
