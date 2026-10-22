@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { parseActivationEligibility, protectionPresentation } from "@/lib/activation-policy/presentation";
 import { YourPlanModal } from "@/components/dashboard/YourPlanModal";
 import { useMessageDeletion } from "@/components/messages/useMessageDeletion";
 import { useEffect, useRef, useState } from "react";
@@ -51,7 +52,9 @@ export default function DashboardPage() {
   const confirmInFlight = useRef(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
   const [checkInSuccess, setCheckInSuccess] = useState(false);
-  const [protectionActive, setProtectionActive] = useState(false);
+  const [protection, setProtection] = useState({
+    title: "Loading…", detail: "Checking your protection status.", deadline: "",
+  });
   const [messages, setMessages] = useState<
   {
     id: string;
@@ -136,34 +139,20 @@ export default function DashboardPage() {
     loadGuardianCount();
     loadCheckIn();
     const loadProtection = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-    
-      if (!user) {
-        setProtectionActive(false);
-        return;
+      try {
+        const { data, error } = await supabase.rpc("get_account_activation_eligibility");
+        if (error) throw error;
+        setProtection(protectionPresentation(parseActivationEligibility(data)));
+      } catch {
+        setProtection({
+          title: "Status unavailable",
+          detail: "Please refresh to check your protection status.",
+          deadline: "",
+        });
       }
-    
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .select("status")
-        .eq("user_id", user.id)
-        .maybeSingle();
-        console.log("PROTECTION USER:", user.id);
-console.log("PROTECTION DATA:", data);
-console.log("PROTECTION ERROR:", error);
-    
-      if (error) {
-        console.error("ERROR LOADING PROTECTION:", error);
-        setProtectionActive(false);
-        return;
-      }
-    
-      setProtectionActive(data?.status === "active");
     };
-    
-    loadProtection();
+
+    void loadProtection();
 
     const loadMessageCount = async () => {
       const {
@@ -475,15 +464,15 @@ setMessages(messageData ?? []);
                     </p>
 
                     <h3 className="mt-2 lg:mt-1 text-xl font-medium text-[#0D2340]">
-  {protectionActive ? "Active" : "Not active"}
+  {protection.title}
 </h3>
 
                     <p className="mt-2 lg:mt-1 text-sm leading-6 lg:leading-5 text-neutral-500">
-                      Protect your ETERPAX when you&apos;re ready.
+                      {protection.detail}
                     </p>
 
                     <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-sm font-medium text-neutral-400">
-                      Protection comes next
+                      {protection.deadline}
                     </p>
                     <button
                       type="button"
