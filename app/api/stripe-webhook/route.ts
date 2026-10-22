@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { handleLifetimeEvent, rpc } from "@/lib/billing/server";
 import { guardianAdmin, sendGuardianConfirmations, uuidPattern } from "@/lib/guardians/server";
 
 const idOf = (value: string | { id: string } | null | undefined) => typeof value === "string" ? value : value?.id;
@@ -17,6 +18,10 @@ export async function POST(request: Request) {
   catch { return Response.json({ error: "Invalid webhook signature" }, { status: 400 }); }
 
   try {
+    const lifetimeOwner = await handleLifetimeEvent(stripe, guardianAdmin(), event);
+    if (lifetimeOwner && !await sendGuardianConfirmations(guardianAdmin(), lifetimeOwner)) {
+      return Response.json({ error: "Notification processing incomplete" }, { status: 503 });
+    }
     let subscriptionId: string | undefined;
     let checkoutOwner: string | undefined;
     switch (event.type) {
@@ -61,6 +66,9 @@ export async function POST(request: Request) {
       p_activated_at: activatedAt,
     });
     if (error) throw new Error("Subscription persistence failed");
+    await rpc(admin, "record_plan_payment_event", {
+      p_event_id: event.id, p_subject_id: subscription.id, p_user_id: userId, p_kind: "subscription",
+    });
     if (activatedAt && !await sendGuardianConfirmations(admin, userId)) {
       // Stripe may retry; durable claims prevent another provider attempt.
       return Response.json({ error: "Notification processing incomplete" }, { status: 503 });

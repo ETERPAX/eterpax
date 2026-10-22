@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { PlanSelection } from "@/components/PlanSelection";
 
 type SubscriptionState =
   | { kind: "loading" | "error" | "empty" | "multiple" }
@@ -34,6 +35,13 @@ export function YourPlanModal({ onClose }: { onClose: () => void }) {
         if (cancelled) return;
         if (authError || !user) throw new Error("Authentication unavailable");
 
+        const lifetime = await supabase.rpc("has_lifetime_access");
+        if (cancelled) return;
+        if (lifetime.error) throw new Error("Access unavailable");
+        if (lifetime.data === true) {
+          setSubscription({ kind: "loaded", label: "Founder’s Lifetime — permanent access, no renewal" });
+          return;
+        }
         // Two rows are enough to detect ambiguity; never infer a commercial plan.
         const { data, error } = await supabase
           .from("subscriptions")
@@ -93,18 +101,7 @@ export function YourPlanModal({ onClose }: { onClose: () => void }) {
         <h2 id="your-plan-title" className="mt-2 font-serif text-3xl">Your Plan</h2>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <section className="rounded-2xl border border-[#0A7BA8]/20 bg-white p-5">
-          <h3 className="text-lg font-medium">Continuity Plan</h3>
-          <p className="mt-3 text-xl font-semibold text-[#0A7BA8]">$4.99 <span className="text-sm font-normal">USD/month</span></p>
-        </section>
-        <section className="rounded-2xl border border-[#0A7BA8]/20 bg-white p-5">
-          <h3 className="text-lg font-medium">Lifetime Founders Edition</h3>
-          <p className="mt-3 text-xl font-semibold text-[#0A7BA8]">$98.99 <span className="text-sm font-normal">USD one-time payment</span></p>
-          <p className="mt-3 text-sm text-neutral-600">Limited to 2,000 memberships</p>
-          <p className="mt-3 inline-block rounded-full bg-[#0A7BA8]/10 px-3 py-1 text-xs font-semibold text-[#17375E]">Coming Soon</p>
-        </section>
-      </div>
+      <div className="mt-6"><PlanSelection /></div>
 
       <section className="mt-5 rounded-2xl border border-neutral-200 bg-white p-5" aria-labelledby="subscription-status-title">
         <h3 id="subscription-status-title" className="font-medium">Your Subscription Status</h3>

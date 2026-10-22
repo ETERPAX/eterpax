@@ -1,6 +1,7 @@
 /** Eligibility and deadlines originate in the authenticated SQL RPC, never the browser clock. */
 export type ActivationEligibility = {
   status: "active" | "exempt_previous_subscriber" | "preparation" | "recovery" | "review_pending";
+  access_kind?: "subscription" | "lifetime";
   evaluated_at: string;
   starts_at: string | null;
   preparation_ends_at: string | null;
@@ -15,6 +16,7 @@ export function parseActivationEligibility(value: unknown): ActivationEligibilit
   const row = value as Record<string, unknown>;
   if (!["active", "exempt_previous_subscriber", "preparation", "recovery", "review_pending"].includes(String(row.status))
     || !isDate(row.evaluated_at)) throw new Error("Invalid eligibility");
+  if (row.access_kind !== undefined && row.access_kind !== "subscription" && row.access_kind !== "lifetime") throw new Error("Invalid access kind");
   const exempt = row.status === "active" || row.status === "exempt_previous_subscriber";
   for (const key of ["starts_at", "preparation_ends_at", "recovery_ends_at"]) {
     if (exempt ? row[key] !== null : !isDate(row[key])) throw new Error("Invalid eligibility deadline");
@@ -31,7 +33,7 @@ function formatDeadline(value: string | null): string {
 export function protectionPresentation(eligibility: ActivationEligibility) {
   switch (eligibility.status) {
     case "active":
-      return { title: "Active", detail: "Your subscription is active.", deadline: "No preparation deadline applies." };
+      return { title: "Active", detail: eligibility.access_kind === "lifetime" ? "Your Lifetime access is active. No renewal is required." : "Your subscription is active.", deadline: "No preparation deadline applies." };
     case "exempt_previous_subscriber":
       return { title: "Not active", detail: "Your subscription history is outside this preparation policy.", deadline: "No preparation deadline applies." };
     case "preparation":

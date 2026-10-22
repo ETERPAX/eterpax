@@ -1,4 +1,7 @@
 import Stripe from "stripe";
+import { parsePlan } from "@/lib/billing/plans";
+import { enabled, lifetimeCheckout, priceId as configuredPrice, verifyPrice } from "@/lib/billing/server";
+import { guardianAdmin } from "@/lib/guardians/server";
 import { createClient } from "@supabase/supabase-js";
 
 let stripe: Stripe | undefined;
@@ -52,7 +55,15 @@ export async function POST(request: Request) {
       );
     }
 
-    const priceId = process.env.STRIPE_PRICE_ID;
+    let plan;
+    try {
+      const raw = await request.text();
+      const body = raw ? JSON.parse(raw) : {};
+      if (!body || typeof body !== "object" || Array.isArray(body) || Object.keys(body).some(key => key !== "plan")) throw new Error("Invalid selection");
+      plan = parsePlan(body.plan);
+    } catch { return Response.json({ error: "Invalid plan selection" }, { status: 400 }); }
+    if (!enabled(plan)) return Response.json({ error: "Plan unavailable" }, { status: 409 });
+    const priceId = configuredPrice(plan);
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
     if (!priceId || !siteUrl) {
@@ -62,6 +73,11 @@ export async function POST(request: Request) {
       );
     }
 
+    if (plan === "lifetime") {
+      const url = await lifetimeCheckout(getStripe(), guardianAdmin(), user.id, siteUrl);
+      return Response.json({ url });
+    }
+    if (plan === "annual") await verifyPrice(getStripe(), plan);
     const session = await getStripe().checkout.sessions.create({
       mode: "subscription",
       line_items: [
@@ -84,8 +100,8 @@ export async function POST(request: Request) {
     });
 
     return Response.json({ url: session.url });
-  } catch (error) {
-    console.error("Stripe Checkout error:", error);
+  } catch {
+    // Provider errors may contain private customer data; do not log them.
 
     return Response.json(
       { error: "Unable to create checkout session" },

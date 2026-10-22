@@ -1,7 +1,7 @@
 "use client";
 
-import { Lock, ShieldCheck } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { ShieldCheck } from "lucide-react";
+import { PlanSelection } from "@/components/PlanSelection";
 export default function PaymentPage() {
   return (
     <main
@@ -45,81 +45,8 @@ export default function PaymentPage() {
       </section>
 
 
-<section className="mx-auto max-w-4xl px-6 pb-16 md:px-10">
-  <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_25px_80px_rgba(16,42,67,0.10)]">
-    <div className="border-b border-slate-100 px-6 py-5 md:px-8">
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-        Your ETERPAX Plan
-      </p>
-
-      <p className="mt-1 text-sm text-slate-600">
-        Everything you need to protect your continuity.
-      </p>
-    </div>
-
-    <div className="px-6 py-8 md:px-10 md:py-10">
-      <div className="text-center">
-        <h2 className="font-serif text-3xl font-light text-[#102A43] md:text-4xl">
-          Continuity Plan
-        </h2>
-
-        <p className="mt-3 text-slate-500">
-          Your private space for the things that matter most.
-        </p>
-        <div className="mt-8">
-  <span className="font-serif text-5xl font-light text-[#102A43]">
-    $4.99
-    <div className="mt-8">
-  <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#0A7BA8]">
-    Unlimited
-  </p>
-
-  <p className="mt-2 text-sm text-slate-500">
-  Letters · Messages · Voice Notes · Video · Wishes · Memories
-  </p>
-</div>
-  </span>
-
-  <span className="ml-2 text-sm text-slate-500">
-    / month
-  </span>
-</div>
-<button
-  type="button"
-  onClick={async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session?.access_token) {
-      window.location.href = "/login";
-      return;
-    }
-
-    const response = await fetch("/api/checkout", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || !data.url) {
-      console.error("Checkout error:", data.error);
-      return;
-    }
-
-    window.location.href = data.url;
-  }}
-  className="mt-8 inline-flex items-center justify-center gap-3 rounded-full bg-[#0A7BA8] px-8 py-3.5 text-sm font-medium text-white transition hover:bg-[#08698F]"
->
-  Protect My Plan
-  <span>→</span>
-</button>
-      </div>
-    </div>
-  </div>
+<section className="mx-auto max-w-5xl px-6 pb-16 md:px-10">
+  <PlanSelection />
 </section>
 </main>
 
