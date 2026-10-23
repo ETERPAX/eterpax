@@ -201,6 +201,18 @@ export default function SettingsPage() {
 
         {error && <p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}
 
+        <section className="mt-6 rounded-3xl border border-neutral-200 bg-white p-7">
+          <h2 className="text-xl font-semibold text-[#0D2340]">
+            Help &amp; Support
+          </h2>
+          <a
+            href="mailto:support@eterpax.com"
+            className="mt-4 inline-block text-sm font-medium text-[#0F5C88] hover:underline"
+          >
+            support@eterpax.com
+          </a>
+        </section>
+
         {/* Danger Zone */}
         <section className="mt-6 rounded-3xl border border-red-200 bg-white p-7">
           <h2 className="text-xl font-semibold text-red-700">
