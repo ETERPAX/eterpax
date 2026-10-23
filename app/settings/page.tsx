@@ -1,13 +1,46 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
+  const [error, setError] = useState("");
+  const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void supabase.auth.getUser().then(({ data, error }) => {
+      if (!active) return;
+      if (error || !data.user) { router.replace("/login"); return; }
+      setUser(data.user);
+    }).catch(() => { if (active) setError("We couldn't load your account. Please refresh."); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active && !session) { setUser(null); router.replace("/login"); }
+    });
+    return () => { active = false; subscription.unsubscribe(); };
+  }, [router]);
+
   async function handleLogout() {
-    await supabase.auth.signOut();
-    window.location.href = "/login";
+    if (signingOut) return;
+    setSigningOut(true);
+    setError("");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      router.replace("/login");
+    } catch {
+      setError("We couldn't sign you out. Please try again.");
+    } finally { setSigningOut(false); }
   }
+
+  if (!user) return <main className="min-h-screen bg-[#F7F8FA] px-6 py-12">
+    <p role={error ? "alert" : "status"}>{error || "Loading your account…"}</p>
+  </main>;
 
   return (
     <main className="min-h-screen bg-[#F7F8FA] px-6 py-12">
@@ -48,7 +81,7 @@ export default function SettingsPage() {
           <div className="mt-6 divide-y divide-neutral-100">
 
             <Link
-              href="/create-account"
+              href="/settings/personal-information"
               className="flex items-center justify-between py-5 transition hover:bg-neutral-50"
             >
               <div>
@@ -70,7 +103,7 @@ export default function SettingsPage() {
                 Email
               </p>
               <p className="mt-1 text-sm text-neutral-500">
-                Your account email
+                {user.email ?? "No email available"}
               </p>
             </div>
 
@@ -90,7 +123,7 @@ export default function SettingsPage() {
           <div className="mt-6 divide-y divide-neutral-100">
 
             <Link
-              href="/check-in"
+              href="/check-in-settings"
               className="flex items-center justify-between py-5 transition hover:bg-neutral-50"
             >
               <div>
@@ -112,7 +145,7 @@ export default function SettingsPage() {
                 Notifications
               </p>
               <p className="mt-1 text-sm text-neutral-500">
-                Manage important continuity notifications.
+                ETERPAX automatically sends Check-in reminders and continuity updates by email. Your Guardians receive verification requests when needed.
               </p>
             </div>
 
@@ -138,13 +171,12 @@ export default function SettingsPage() {
               Keep your account secure with a strong password.
             </p>
 
-            <button
-              type="button"
-              disabled
-              className="mt-4 rounded-xl border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-400"
+            <Link
+              href="/forgot-password"
+              className="mt-4 inline-block rounded-xl border border-neutral-200 px-4 py-2 text-sm font-medium text-[#0D2340]"
             >
               Change password
-            </button>
+            </Link>
           </div>
         </section>
 
@@ -160,11 +192,14 @@ export default function SettingsPage() {
 
           <button
             onClick={handleLogout}
+            disabled={signingOut}
             className="mt-5 rounded-xl border border-neutral-300 px-5 py-2.5 text-sm font-medium text-[#0D2340] transition hover:bg-neutral-50"
           >
-            Sign out
+            {signingOut ? "Signing out…" : "Sign out"}
           </button>
         </section>
+
+        {error && <p role="alert" className="mt-4 text-sm text-red-600">{error}</p>}
 
         {/* Danger Zone */}
         <section className="mt-6 rounded-3xl border border-red-200 bg-white p-7">

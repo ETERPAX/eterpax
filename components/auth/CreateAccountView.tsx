@@ -2,12 +2,17 @@
 
 
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { OnboardingFormLayout } from "./OnboardingFormLayout";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { supabase } from "@/lib/supabase";
-export function CreateAccountView() {
+export function CreateAccountView({ mode = "create" }: { mode?: "create" | "edit" }) {
+  const editing = mode === "edit";
+  const router = useRouter();
+  const [loaded, setLoaded] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
@@ -23,7 +28,10 @@ useEffect(() => {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) return;
+    if (!user) {
+      if (editing) router.replace("/login");
+      return;
+    }
 
     setExistingUser(true);
 
@@ -31,12 +39,14 @@ useEffect(() => {
     setFirstName(user.user_metadata?.firstName ?? "");
     setLastName(user.user_metadata?.lastName ?? "");
     setDateOfBirth(user.user_metadata?.dateOfBirth ?? "");
+    setLoaded(true);
   };
 
-  loadUser();
-}, []);
+  void loadUser().catch(() => setError("We couldn’t load your account. Please refresh."));
+}, [editing, router]);
 const handleContinue = async () => {
   setError("");
+  if (editing && (!loaded || !existingUser)) return;
 
   if (!firstName || !lastName || !dateOfBirth || !email) {
     setError("Please complete all required fields.");
@@ -47,7 +57,7 @@ const handleContinue = async () => {
 
   if (existingUser) {
     const { error: updateError } = await supabase.auth.updateUser({
-      email,
+      ...(editing ? {} : { email }),
       data: {
         firstName,
         lastName,
@@ -62,7 +72,7 @@ const handleContinue = async () => {
     }
 
     setLoading(false);
-    window.location.href = "/dashboard";
+    window.location.assign(editing ? "/settings" : "/dashboard");
     return;
   }
 
@@ -103,19 +113,23 @@ const handleContinue = async () => {
   }
 
   setLoading(false);
-  window.location.href = "/dashboard";
+  window.location.assign("/dashboard");
 };
 
-  return (
-    <OnboardingFormLayout step={1} totalSteps={5}>
+  if (editing && !loaded) return <main className="min-h-screen bg-[#F7F8FA] px-6 py-12">
+    <Link href="/settings" className="text-sm font-medium text-[#0F5C88]">← Back to Settings</Link>
+    <p className="mt-6" role={error ? "alert" : "status"}>{error || "Loading your account…"}</p>
+  </main>;
+
+  const form = (
       <div className="space-y-6">
         <div className="space-y-3 text-center">
           <h1 className="text-5xl font-light tracking-tight text-[#0D2340]">
-          Create Your Account
+          {editing ? "Personal information" : "Create Your Account"}
           </h1>
 
           <p className="mx-auto max-w-lg text-lg leading-8 text-neutral-600">
-            Create your secure ETERPAX account and begin building your continuity plan.
+            {editing ? "Update your personal account details." : "Create your secure ETERPAX account and begin building your continuity plan."}
           </p>
         </div>
 
@@ -142,6 +156,7 @@ const handleContinue = async () => {
   onChange={(e) => setDateOfBirth(e.target.value)}
 />
 
+{!editing && <>
 <Input
   label="Email"
   type="email"
@@ -168,6 +183,7 @@ const handleContinue = async () => {
   value={confirmPassword}
   onChange={(e) => setConfirmPassword(e.target.value)}
 />
+</>}
 {error && (
   <p className="text-sm text-red-500 text-center">
     {error}
@@ -175,11 +191,17 @@ const handleContinue = async () => {
 )}
 <div className="flex justify-center pt-4">
 <Button onClick={handleContinue} disabled={loading}>
-  {loading ? "Creating account..." : "Continue"}
+  {loading ? (editing ? "Saving..." : "Creating account...") : (editing ? "Save changes" : "Continue")}
 </Button>
 </div>
       </div>
       </div>
-    </OnboardingFormLayout>
   );
+  if (editing) return <main className="min-h-screen bg-[#F7F8FA] px-6 py-12">
+    <div className="mx-auto max-w-3xl">
+      <Link href="/settings" className="text-sm font-medium text-[#0F5C88] hover:underline">← Back to Settings</Link>
+      <section className="mt-8 rounded-3xl border border-neutral-200 bg-white p-7">{form}</section>
+    </div>
+  </main>;
+  return <OnboardingFormLayout step={1} totalSteps={5}>{form}</OnboardingFormLayout>;
 }
