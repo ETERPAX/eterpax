@@ -11,10 +11,9 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { supabase } from "@/lib/supabase";
 export function CreateAccountView({ mode = "create" }: { mode?: "create" | "edit" }) {
+  const { message: ui } = useLanguage();
   const editing = mode === "edit";
-  const { t: translate, message: translateMessage } = useLanguage();
-  const t = (key: Parameters<typeof translate>[0]) => editing ? translate(key) : key;
-  const message = (text: string) => editing ? translateMessage(text) : text;
+  const { t, message } = useLanguage();
   const router = useRouter();
   const [loaded, setLoaded] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -129,11 +128,11 @@ const handleContinue = async () => {
       <div className="space-y-6">
         <div className="space-y-3 text-center">
           <h1 className="text-5xl font-light tracking-tight text-[#0D2340]">
-          {editing ? t("Personal information") : "Create Your Account"}
+          {editing ? t("Personal information") : ui("Create Your Account")}
           </h1>
 
           <p className="mx-auto max-w-lg text-lg leading-8 text-neutral-600">
-            {editing ? t("Update your personal account details.") : "Create your secure ETERPAX account and begin building your continuity plan."}
+            {editing ? t("Update your personal account details.") : ui("Create your secure ETERPAX account and begin building your continuity plan.")}
           </p>
         </div>
 
@@ -164,7 +163,7 @@ const handleContinue = async () => {
 <Input
   label={t("Email")}
   type="email"
-  placeholder="Enter your email address"
+  placeholder={ui("Enter your email address")}
   value={email}
   onChange={(e) => setEmail(e.target.value)}
 />
@@ -172,18 +171,15 @@ const handleContinue = async () => {
 <Input
   label={t("Password")}
   type="password"
-  placeholder="Create a strong password"
+  placeholder={ui("Create a strong password")}
   value={password}
   onChange={(e) => setPassword(e.target.value)}
 />
-<p className="text-sm text-neutral-500 -mt-3">
-  Use at least 8 characters. For better security, use a mix of letters,
-  numbers, and symbols.
-</p>
+<p className="text-sm text-neutral-500 -mt-3">{ui("Use at least 8 characters. For better security, use a mix of letters, numbers, and symbols.")}</p>
 <Input
-  label="Confirm Password"
+  label={ui("Confirm Password")}
   type="password"
-  placeholder="Re-enter your password"
+  placeholder={ui("Re-enter your password")}
   value={confirmPassword}
   onChange={(e) => setConfirmPassword(e.target.value)}
 />
@@ -195,7 +191,7 @@ const handleContinue = async () => {
 )}
 <div className="flex justify-center pt-4">
 <Button onClick={handleContinue} disabled={loading}>
-  {loading ? (editing ? t("Saving...") : "Creating account...") : (editing ? t("Save changes") : "Continue")}
+  {loading ? (editing ? t("Saving...") : ui("Creating account...")) : (editing ? t("Save changes") : ui("Continue"))}
 </Button>
 </div>
       </div>

@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
@@ -6,6 +7,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export default function LoginPage() {
+  const { message: ui } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -74,20 +76,11 @@ export default function LoginPage() {
     {/* HERO CONTENT */}
     <div className="flex flex-1 items-center px-8 pb-20 lg:px-14">
       <div className="max-w-2xl">
-        <p className="mb-6 text-sm font-medium uppercase tracking-[0.28em] text-white/75">
-          Welcome back.
-        </p>
+        <p className="mb-6 text-sm font-medium uppercase tracking-[0.28em] text-white/75">{ui("Welcome back.")}</p>
 
-        <h2 className="max-w-lg font-serif text-5xl leading-[0.98] tracking-tight text-white md:text-6xl lg:text-7xl">
-          Your continuity
-          <br />
-          is waiting.
-        </h2>
+        <h2 className="max-w-lg font-serif text-5xl leading-[0.98] tracking-tight text-white md:text-6xl lg:text-7xl">{ui("Your continuity")}<br />{ui("is waiting.")}</h2>
 
-        <p className="mt-6 max-w-xl text-lg leading-8 text-white/85">
-          Your messages, your wishes, and the things that matter to you
-          are safely waiting for you.
-        </p>
+        <p className="mt-6 max-w-xl text-lg leading-8 text-white/85">{ui("Your messages, your wishes, and the things that matter to you are safely waiting for you.")}</p>
       </div>
     </div>
   </div>
@@ -105,21 +98,15 @@ export default function LoginPage() {
                 ETERPAX
               </Link>
 
-              <h1 className="mt-8 text-4xl font-light tracking-tight text-[#0D2340]">
-                Welcome back.
-              </h1>
+              <h1 className="mt-8 text-4xl font-light tracking-tight text-[#0D2340]">{ui("Welcome back.")}</h1>
 
-              <p className="mt-3 text-base text-neutral-600">
-                Sign in to continue your continuity journey.
-              </p>
+              <p className="mt-3 text-base text-neutral-600">{ui("Sign in to continue your continuity journey.")}</p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-6">
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-[#0D2340]">
-                  Email
-                </label>
+                <label className="mb-2 block text-sm font-medium text-[#0D2340]">{ui("Email")}</label>
 
                 <input
                   type="email"
@@ -133,9 +120,7 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-[#0D2340]">
-                  Password
-                </label>
+                <label className="mb-2 block text-sm font-medium text-[#0D2340]">{ui("Password")}</label>
 
                 <div className="relative">
                   <input
@@ -150,7 +135,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword((visible) => !visible)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={showPassword ? ui("Hide password") : ui("Show password")}
                     disabled={loading}
                     className="absolute inset-y-0 right-0 flex items-center rounded-r-xl px-3 text-[#0F5C88] hover:text-[#0D2340] focus-visible:outline-2 focus-visible:outline-[#0F5C88] disabled:opacity-50"
                   >
@@ -161,15 +146,13 @@ export default function LoginPage() {
                   <Link
                     href="/forgot-password"
                     className="text-sm font-medium text-[#0F5C88] hover:underline"
-                  >
-                    Forgot password?
-                  </Link>
+                  >{ui("Forgot password?")}</Link>
                 </div>
               </div>
 
               {error && (
                 <p className="text-sm text-red-500">
-                  {error}
+                  {ui(error)}
                 </p>
               )}
 
@@ -178,18 +161,15 @@ export default function LoginPage() {
                 disabled={loading}
                 className="w-full rounded-xl bg-[#2F8DBB] py-3.5 font-medium text-white transition hover:bg-[#277EA7] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? "Signing in..." : "Log In"}
+                {loading ? ui("Signing in...") : ui("Log In")}
               </button>
             </form>
 
-            <div className="mt-8 text-center text-sm text-neutral-500">
-              Don&apos;t have an account?{" "}
+            <div className="mt-8 text-center text-sm text-neutral-500">{ui("Don't have an account?")}{" "}
               <Link
                 href="/create-account"
                 className="font-medium text-[#0F5C88] hover:underline"
-              >
-                Create your account
-              </Link>
+              >{ui("Create your account")}</Link>
             </div>
 
           </div>

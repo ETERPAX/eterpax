@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import { InputHTMLAttributes, ReactNode, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
@@ -19,6 +20,7 @@ export function Input({
   type,
   ...props
 }: InputProps) {
+  const { message: ui } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
 
   const inputType =
@@ -64,7 +66,7 @@ export function Input({
             onClick={() => setShowPassword((value) => !value)}
             className="shrink-0 text-neutral-400 transition-colors hover:text-[#0D2340]"
             aria-label={
-              showPassword ? "Hide password" : "Show password"
+              showPassword ? ui("Hide password") : ui("Show password")
             }
           >
             {showPassword ? (
@@ -78,7 +80,7 @@ export function Input({
 
       {error && (
         <p className="text-sm text-red-500">
-          {error}
+          {ui(error)}
         </p>
       )}
     </div>

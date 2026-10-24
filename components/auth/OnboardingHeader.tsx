@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 interface OnboardingHeaderProps {
   step: number;
@@ -10,14 +11,14 @@ export function OnboardingHeader({
   step,
   totalSteps,
 }: OnboardingHeaderProps) {
+  const { message: ui } = useLanguage();
   const progress = (step / totalSteps) * 100;
 
   return (
     <header className="mb-16 flex items-center justify-end">
       <div className="w-40">
         <div className="mb-2 flex justify-between text-xs text-neutral-500">
-          <span>
-            Step {step} of {totalSteps}
+          <span>{ui("Step")} {step} {ui("of")} {totalSteps}
           </span>
         </div>
 

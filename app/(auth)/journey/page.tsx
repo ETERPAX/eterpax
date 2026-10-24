@@ -1,3 +1,5 @@
+"use client";
+import { useLanguage } from "@/components/LanguageProvider";
 import Link from "next/link";
 
 const steps = [
@@ -40,6 +42,7 @@ const steps = [
 ];
 
 export default function JourneyPage() {
+  const { message: ui } = useLanguage();
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#102A43]">
       {/* BACKGROUND */}
@@ -73,9 +76,7 @@ export default function JourneyPage() {
             </div>
           </div>
 
-          <div className="text-sm font-medium tracking-wide text-white/75">
-            Your private journey
-          </div>
+          <div className="text-sm font-medium tracking-wide text-white/75">{ui("Your private journey")}</div>
         </header>
 
         {/* JOURNEY CARD */}
@@ -84,20 +85,11 @@ export default function JourneyPage() {
             {/* INTRO */}
             <section className="flex flex-col justify-between">
               <div>
-                <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#0A7BA8]">
-                  Your journey
-                </p>
+                <p className="text-sm font-medium uppercase tracking-[0.24em] text-[#0A7BA8]">{ui("Your journey")}</p>
 
-                <h1 className="mt-5 max-w-md font-serif text-5xl leading-[1.02] tracking-tight text-[#102A43] md:text-6xl">
-                  Your ETERPAX
-                  <br />
-                  Journey
-                </h1>
+                <h1 className="mt-5 max-w-md font-serif text-5xl leading-[1.02] tracking-tight text-[#102A43] md:text-6xl">{ui("Your ETERPAX")}<br />{ui("Journey")}</h1>
 
-                <p className="mt-7 max-w-md text-lg leading-8 text-[#334E68]">
-                  A simple path to create something that stays — personal,
-                  private and entirely yours.
-                </p>
+                <p className="mt-7 max-w-md text-lg leading-8 text-[#334E68]">{ui("A simple path to create something that stays — personal, private and entirely yours.")}</p>
               </div>
 
               
@@ -118,11 +110,11 @@ export default function JourneyPage() {
                 
                   <div className="min-w-0 flex-1">
                     <h2 className="text-sm font-semibold leading-5 text-[#102A43] md:text-base">
-                      {step.title}
+                      {ui(step.title)}
                     </h2>
                 
                     <p className="mt-0.5 text-xs leading-5 text-[#627D98]">
-                      {step.description}
+                      {ui(step.description)}
                     </p>
                   </div>
                 </div>
@@ -134,25 +126,17 @@ export default function JourneyPage() {
                 <Link
                   href="/your-messages?new=true"
                   className="inline-flex items-center rounded-full bg-[#0A7BA8] px-10 py-4 text-lg font-medium text-white shadow-xl shadow-sky-900/15 transition-all duration-300 hover:scale-[1.02] hover:bg-[#08698F] active:scale-[0.99]"
-                >
-                  Let&apos;s Begin
-                  <span className="ml-3">→</span>
+                >{ui("Let's Begin")}<span className="ml-3">→</span>
                 </Link>
 
-                <p className="mt-4 text-sm text-slate-500">
-                  You&apos;re in control of what you create, who it&apos;s for,
-                  and when it&apos;s ready.
-                </p>
+                <p className="mt-4 text-sm text-slate-500">{ui("You're in control of what you create, who it's for, and when it's ready.")}</p>
               </div>
             </section>
           </div>
 
           {/* PRIVACY */}
           <div className="mt-10 border-t border-slate-200 pt-6 text-center">
-            <p className="text-sm text-slate-500">
-              🔒 Your ETERPAX space is private and designed to keep your
-              Messages protected.
-            </p>
+            <p className="text-sm text-slate-500">{ui("🔒 Your ETERPAX space is private and designed to keep your Messages protected.")}</p>
           </div>
         </div>
       </div>

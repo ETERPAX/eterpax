@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import { ButtonHTMLAttributes } from "react";
 import { ArrowRight } from "lucide-react";
@@ -20,6 +21,7 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  const { message: ui } = useLanguage();
   return (
     <button
       disabled={disabled || loading}
@@ -40,7 +42,7 @@ export function Button({
       )}
       {...props}
     >
-      {loading ? "Loading..." : children}
+      {loading ? ui("Loading...") : children}
 
       {icon && !loading && (
         <ArrowRight className="h-5 w-5" />
