@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { translate, translateMessage, type Locale, type TranslationKey } from "@/lib/i18n/dictionaries";
+import { translate, translateMessage, formatTranslation, type Locale, type TranslationKey } from "@/lib/i18n/dictionaries";
 
 const storageKey = "eterpax_language";
 const LanguageContext = createContext({
@@ -38,6 +38,7 @@ export function useLanguage() {
   return {
     ...context,
     t: (key: TranslationKey) => translate(context.locale, key),
-    message: (text: string) => translateMessage(context.locale, text),
+    message: (text: string | null | undefined) => translateMessage(context.locale, text ?? ""),
+    format: (key: TranslationKey, values: Record<string, string | number>) => formatTranslation(context.locale, key, values),
   };
 }
