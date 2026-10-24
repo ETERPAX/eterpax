@@ -1,7 +1,8 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Plus, Pencil, Users, Mail, ShieldCheck } from "lucide-react";
 
 import { OnboardingFormLayout } from "@/components/auth/OnboardingFormLayout";
@@ -18,6 +19,10 @@ const emptyGuardian = (): Guardian => ({
 });
 
 export default function YourGuardiansPage() {
+  const { message: ui, format } = useLanguage();
+  const showLoadError = useEffectEvent(() => {
+    alert(ui("We could not load your Guardians. Please reload before saving."));
+  });
   const [guardians, setGuardians] = useState<Guardian[]>([
     emptyGuardian(),
     emptyGuardian(),
@@ -45,7 +50,7 @@ export default function YourGuardiansPage() {
           setExistingIds(data.map(row => row.id!));
           setLoaded(true);
         } catch {
-          alert("We could not load your Guardians. Please reload before saving.");
+          showLoadError();
         }
       }
   
@@ -94,7 +99,7 @@ export default function YourGuardiansPage() {
     if (!loaded || saveInFlight.current) return;
     const selected = guardians.filter(row => row.id || row.name.trim() || row.email.trim() || row.relationship.trim());
     if (selected.length < 2 || selected.length > 6 || selected.some(row => !row.name.trim() || !row.email.trim() || !row.relationship.trim())) {
-      alert("Please complete between two and six Guardians before saving.");
+      alert(ui("Please complete between two and six Guardians before saving."));
       return;
     }
     saveInFlight.current = true;
@@ -109,13 +114,13 @@ export default function YourGuardiansPage() {
         return;
       }
       if (!result.notificationsComplete) {
-        alert("Guardians saved. Some notification emails could not be confirmed as sent. Please contact support; saving again will not resend an attempted email.");
+        alert(ui("Guardians saved. Some notification emails could not be confirmed as sent. Please contact support; saving again will not resend an attempted email."));
         return;
       }
       window.location.href = "/check-in";
     } catch (error) {
       setLoaded(false);
-      alert(error instanceof Error ? error.message : "Unable to save Guardians. Please reload.");
+      alert(ui(error instanceof Error ? error.message : "Unable to save Guardians. Please reload."));
     } finally {
       saveInFlight.current = false;
       setSaving(false);
@@ -139,9 +144,7 @@ export default function YourGuardiansPage() {
         <Link
           href="/dashboard"
           className="inline-flex items-center text-sm font-medium text-neutral-500 transition hover:text-[#0A7BA8]"
-        >
-          ← Back to Dashboard
-        </Link>
+        >{ui("← Back to Dashboard")}</Link>
 
         {/* HEADER */}
         <div className="space-y-3 text-center">
@@ -149,14 +152,9 @@ export default function YourGuardiansPage() {
             <Users className="h-6 w-6 text-[#0F5C88]" />
           </div>
 
-          <h1 className="text-5xl font-light tracking-tight text-[#0D2340]">
-            Your Guardians
-          </h1>
+          <h1 className="text-5xl font-light tracking-tight text-[#0D2340]">{ui("Your Guardians")}</h1>
 
-          <p className="mx-auto max-w-xl text-lg leading-8 text-neutral-600">
-            Choose people you trust deeply to help ETERPAX carry out the plan
-            you created if we can no longer reach you.
-          </p>
+          <p className="mx-auto max-w-xl text-lg leading-8 text-neutral-600">{ui("Choose people you trust deeply to help ETERPAX carry out the plan you created if we can no longer reach you.")}</p>
         </div>
 
         {/* WHAT IS A GUARDIAN */}
@@ -167,20 +165,11 @@ export default function YourGuardiansPage() {
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-[#0D2340]">
-                What is a Guardian?
-              </h2>
+              <h2 className="text-lg font-semibold text-[#0D2340]">{ui("What is a Guardian?")}</h2>
 
-              <p className="mt-2 text-sm leading-7 text-neutral-600">
-                A Guardian is someone you trust deeply — a person you choose
-                to help ETERPAX carry out the plan you created.
-              </p>
+              <p className="mt-2 text-sm leading-7 text-neutral-600">{ui("A Guardian is someone you trust deeply — a person you choose to help ETERPAX carry out the plan you created.")}</p>
 
-              <p className="mt-3 text-sm leading-7 text-neutral-600">
-                Your Guardians do not receive your Messages and they do not
-                control your ETERPAX account. Their role is limited to helping
-                ETERPAX follow the protocol you authorized.
-              </p>
+              <p className="mt-3 text-sm leading-7 text-neutral-600">{ui("Your Guardians do not receive your Messages and they do not control your ETERPAX account. Their role is limited to helping ETERPAX follow the protocol you authorized.")}</p>
             </div>
           </div>
         </div>
@@ -193,9 +182,7 @@ export default function YourGuardiansPage() {
             </div>
 
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-[#0D2340]">
-                How your Guardians work
-              </h2>
+              <h2 className="text-lg font-semibold text-[#0D2340]">{ui("How your Guardians work")}</h2>
 
               <div className="grid gap-3 pt-1 md:grid-cols-4">
                 <div className="rounded-xl bg-white p-4">
@@ -203,9 +190,7 @@ export default function YourGuardiansPage() {
                     01
                   </p>
 
-                  <p className="mt-2 text-sm font-medium leading-5 text-[#17375E]">
-                    You miss 3 consecutive Check-ins
-                  </p>
+                  <p className="mt-2 text-sm font-medium leading-5 text-[#17375E]">{ui("You miss 3 consecutive Check-ins")}</p>
                 </div>
 
                 <div className="rounded-xl bg-white p-4">
@@ -213,9 +198,7 @@ export default function YourGuardiansPage() {
                     02
                   </p>
 
-                  <p className="mt-2 text-sm font-medium leading-5 text-[#17375E]">
-                    Your ETERPAX protocol activates
-                  </p>
+                  <p className="mt-2 text-sm font-medium leading-5 text-[#17375E]">{ui("Your ETERPAX protocol activates")}</p>
                 </div>
 
                 <div className="rounded-xl bg-white p-4">
@@ -223,9 +206,7 @@ export default function YourGuardiansPage() {
                     03
                   </p>
 
-                  <p className="mt-2 text-sm font-medium leading-5 text-[#17375E]">
-                    24 hours later, your Guardians receive an email
-                  </p>
+                  <p className="mt-2 text-sm font-medium leading-5 text-[#17375E]">{ui("24 hours later, your Guardians receive an email")}</p>
                 </div>
 
                 <div className="rounded-xl bg-white p-4">
@@ -233,15 +214,11 @@ export default function YourGuardiansPage() {
                     04
                   </p>
 
-                  <p className="mt-2 text-sm font-medium leading-5 text-[#17375E]">
-                  A majority of your Guardians must confirm what they know.
-                  </p>
+                  <p className="mt-2 text-sm font-medium leading-5 text-[#17375E]">{ui("A majority of your Guardians must confirm what they know.")}</p>
                 </div>
               </div>
 
-              <p className="pt-1 text-xs leading-5 text-[#496B8D]">
-                With {activeGuardians.length} active Guardians, a majority
-                means <strong>{majorityCount}</strong>.
+              <p className="pt-1 text-xs leading-5 text-[#496B8D]">{ui("With")} {activeGuardians.length} {ui("active Guardians, a majority means")} <strong>{majorityCount}</strong>.
               </p>
             </div>
           </div>
@@ -249,29 +226,17 @@ export default function YourGuardiansPage() {
 
         {/* WHAT GUARDIANS WILL BE ASKED */}
         <div className="rounded-2xl border border-[#C9E5EF] bg-[#F0F7FA] p-6">
-          <h2 className="text-lg font-semibold text-[#0D2340]">
-            What your Guardians will be asked
-          </h2>
+          <h2 className="text-lg font-semibold text-[#0D2340]">{ui("What your Guardians will be asked")}</h2>
 
-          <p className="mt-2 text-sm leading-6 text-[#496B8D]">
-            If your protocol is activated, your Guardians will receive a
-            secure email with one direct question.
-          </p>
+          <p className="mt-2 text-sm leading-6 text-[#496B8D]">{ui("If your protocol is activated, your Guardians will receive a secure email with one direct question.")}</p>
 
           <div className="mt-4 rounded-xl bg-white px-5 py-4">
-            <p className="text-base font-medium leading-6 text-[#17375E]">
-            Is Juan still alive?
-            </p>
+            <p className="text-base font-medium leading-6 text-[#17375E]">{ui("Is Juan still alive?")}</p>
           </div>
 
-          <p className="mt-3 text-xs leading-5 text-[#496B8D]">
-            They are asked to answer based on what they know.
-          </p>
+          <p className="mt-3 text-xs leading-5 text-[#496B8D]">{ui("They are asked to answer based on what they know.")}</p>
 
-          <p className="mt-2 text-xs font-medium leading-5 text-[#35627A]">
-            You are not responsible for what happens next. You are simply
-            helping ETERPAX understand what you know.
-          </p>
+          <p className="mt-2 text-xs font-medium leading-5 text-[#35627A]">{ui("You are not responsible for what happens next. You are simply helping ETERPAX understand what you know.")}</p>
         </div>
 
         {/* GUARDIAN EDUCATION */}
@@ -282,23 +247,12 @@ export default function YourGuardiansPage() {
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-[#0D2340]">
-                Make sure they understand
-              </h2>
+              <h2 className="text-lg font-semibold text-[#0D2340]">{ui("Make sure they understand")}</h2>
 
-              <p className="mt-2 text-sm leading-6 text-neutral-600">
-                Before you invite someone to be your Guardian, explain what
-                their role means.
-              </p>
+              <p className="mt-2 text-sm leading-6 text-neutral-600">{ui("Before you invite someone to be your Guardian, explain what their role means.")}</p>
 
               <div className="mt-4 rounded-xl border-l-2 border-[#0A7BA8] bg-[#F7F9FB] px-5 py-4">
-                <p className="text-sm italic leading-6 text-[#17375E]">
-                  “I’ve chosen you as one of my ETERPAX Guardians. If ETERPAX
-                  cannot reach me after three consecutive check-ins, you will receive an email asking you to help confirm what you know about my situation. You won’t have access to my Messages,
-                  and you won’t control my ETERPAX account. You are not
-                  responsible for what happens next — you’re simply helping
-                  ETERPAX understand what you know.”
-                </p>
+                <p className="text-sm italic leading-6 text-[#17375E]">{ui("“I’ve chosen you as one of my ETERPAX Guardians. If ETERPAX cannot reach me after three consecutive check-ins, you will receive an email asking you to help confirm what you know about my situation. You won’t have access to my Messages, and you won’t control my ETERPAX account. You are not responsible for what happens next — you’re simply helping ETERPAX understand what you know.”")}</p>
               </div>
             </div>
           </div>
@@ -307,13 +261,9 @@ export default function YourGuardiansPage() {
         {/* GUARDIANS */}
         <div className="space-y-4">
           <div>
-            <h2 className="text-xl font-medium text-[#0D2340]">
-              Choose your Guardians
-            </h2>
+            <h2 className="text-xl font-medium text-[#0D2340]">{ui("Choose your Guardians")}</h2>
 
-            <p className="mt-1 text-sm text-neutral-500">
-              Choose at least two Guardians. Three are recommended; you may have up to six.
-            </p>
+            <p className="mt-1 text-sm text-neutral-500">{ui("Choose at least two Guardians. Three are recommended; you may have up to six.")}</p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -337,14 +287,13 @@ export default function YourGuardiansPage() {
                       </div>
 
                       <div>
-                        <h3 className="font-medium text-[#0D2340]">
-                          Guardian {index + 1}
+                        <h3 className="font-medium text-[#0D2340]">{ui("Guardian")} {index + 1}
                         </h3>
 
                         <p className="text-sm text-neutral-500">
                           {isComplete
                             ? guardian.relationship
-                            : "Information required"}
+                            : ui("Information required")}
                         </p>
                       </div>
                     </div>
@@ -354,7 +303,7 @@ export default function YourGuardiansPage() {
                         type="button"
                         onClick={() => setOpenGuardian(index)}
                         className="text-[#0A7BA8] transition hover:text-[#08698F]"
-                        aria-label={`Edit Guardian ${index + 1}`}
+                        aria-label={format("Edit Guardian {number}", { number: index + 1 })}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
@@ -369,18 +318,14 @@ export default function YourGuardiansPage() {
                         </p>
                       ) : (
                         <>
-                          <p className="text-sm text-neutral-500">
-                            Add this trusted person&apos;s information.
-                          </p>
+                          <p className="text-sm text-neutral-500">{ui("Add this trusted person's information.")}</p>
 
                           <button
                             type="button"
                             onClick={() => setOpenGuardian(index)}
                             className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
                           >
-                            <Pencil className="h-4 w-4" />
-                            Add Guardian
-                          </button>
+                            <Pencil className="h-4 w-4" />{ui("Add Guardian")}</button>
                         </>
                       )}
                     </div>
@@ -389,8 +334,8 @@ export default function YourGuardiansPage() {
                   {isOpen && (
                     <div className="mt-5 space-y-4">
                       <Input
-                        label="Guardian's Full Name"
-                        placeholder="Enter full name"
+                        label={ui("Guardian's Full Name")}
+                        placeholder={ui("Enter full name")}
                         value={guardian.name}
                         onChange={(e) =>
                           updateGuardian(
@@ -402,9 +347,9 @@ export default function YourGuardiansPage() {
                       />
 
                       <Input
-                        label="Guardian's Email"
+                        label={ui("Guardian's Email")}
                         type="email"
-                        placeholder="Enter email address"
+                        placeholder={ui("Enter email address")}
                         value={guardian.email}
                         onChange={(e) =>
                           updateGuardian(
@@ -416,8 +361,8 @@ export default function YourGuardiansPage() {
                       />
 
                       <Input
-                        label="Relationship"
-                        placeholder="Example: spouse, sibling, friend"
+                        label={ui("Relationship")}
+                        placeholder={ui("Example: spouse, sibling, friend")}
                         value={guardian.relationship}
                         onChange={(e) =>
                           updateGuardian(
@@ -433,9 +378,7 @@ export default function YourGuardiansPage() {
                           type="button"
                           onClick={() => setOpenGuardian(null)}
                           className="text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
-                        >
-                          Done
-                        </button>
+                        >{ui("Done")}</button>
                       </div>
                     </div>
                   )}
@@ -454,13 +397,9 @@ export default function YourGuardiansPage() {
                   <Plus className="h-5 w-5 text-[#0A7BA8]" />
                 </div>
 
-                <h3 className="mt-3 font-medium text-[#0D2340]">
-                  Add another Guardian
-                </h3>
+                <h3 className="mt-3 font-medium text-[#0D2340]">{ui("Add another Guardian")}</h3>
 
-                <p className="mt-1 text-sm text-neutral-500">
-                  Optional
-                </p>
+                <p className="mt-1 text-sm text-neutral-500">{ui("Optional")}</p>
               </button>
             )}
           </div>
@@ -468,11 +407,7 @@ export default function YourGuardiansPage() {
 
         {/* IMPORTANT NOTE */}
         <div className="border-t border-neutral-200 pt-5">
-          <p className="text-center text-sm leading-6 text-neutral-500">
-            Your Guardians help ETERPAX follow the protocol you authorize.
-            They do not receive your Messages simply because they are
-            Guardians.
-          </p>
+          <p className="text-center text-sm leading-6 text-neutral-500">{ui("Your Guardians help ETERPAX follow the protocol you authorize. They do not receive your Messages simply because they are Guardians.")}</p>
         </div>
 
         {/* CONTINUE */}
@@ -482,9 +417,7 @@ export default function YourGuardiansPage() {
             onClick={handleContinue}
             disabled={!loaded || saving || showSavedNotice}
             className="inline-flex items-center rounded-full bg-[#0A7BA8] px-10 py-4 font-medium text-white shadow-lg shadow-sky-500/10 transition hover:bg-[#08698F]"
-          >
-            Continue →
-          </button>
+          >{ui("Continue →")}</button>
         </div>
 
       </div>

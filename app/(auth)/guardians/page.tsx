@@ -1,7 +1,8 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Plus, Pencil, Users, ShieldCheck } from "lucide-react";
 
 import { Input } from "@/components/ui/Input";
@@ -17,6 +18,10 @@ const emptyGuardian = (): Guardian => ({
 });
 
 export default function GuardiansPage() {
+  const { message: ui, format } = useLanguage();
+  const showLoadError = useEffectEvent(() => {
+    alert(ui("We could not load your Guardians. Please reload before saving."));
+  });
   const [guardians, setGuardians] = useState<Guardian[]>([
     emptyGuardian(),
     emptyGuardian(),
@@ -49,7 +54,7 @@ export default function GuardiansPage() {
         setExistingIds(data.map(row => row.id!));
         setLoaded(true);
       } catch {
-        alert("We could not load your Guardians. Please reload before saving.");
+        showLoadError();
       }
       setLoading(false);
     };
@@ -94,7 +99,7 @@ export default function GuardiansPage() {
     if (!loaded || saveInFlight.current) return;
     const selected = guardians.filter(row => row.id || row.name.trim() || row.email.trim() || row.relationship.trim());
     if (selected.length < 2 || selected.length > 6 || selected.some(row => !row.name.trim() || !row.email.trim() || !row.relationship.trim())) {
-      alert("Please complete between two and six Guardians before saving.");
+      alert(ui("Please complete between two and six Guardians before saving."));
       return;
     }
     saveInFlight.current = true;
@@ -108,13 +113,13 @@ export default function GuardiansPage() {
         return;
       }
       if (!result.notificationsComplete) {
-        alert("Guardians saved. Some notification emails could not be confirmed as sent. Please contact support; saving again will not resend an attempted email.");
+        alert(ui("Guardians saved. Some notification emails could not be confirmed as sent. Please contact support; saving again will not resend an attempted email."));
         return;
       }
-      alert("Your Guardians have been saved.");
+      alert(ui("Your Guardians have been saved."));
     } catch (error) {
       setLoaded(false);
-      alert(error instanceof Error ? error.message : "Unable to save Guardians. Please reload.");
+      alert(ui(error instanceof Error ? error.message : "Unable to save Guardians. Please reload."));
     } finally {
       saveInFlight.current = false;
       setSaving(false);
@@ -134,9 +139,7 @@ export default function GuardiansPage() {
   if (loading) {
     return (
       <main className="min-h-dvh bg-[#F7F9FB] px-6 py-12">
-        <div className="mx-auto max-w-4xl text-center text-sm text-neutral-500">
-          Loading your Guardians...
-        </div>
+        <div className="mx-auto max-w-4xl text-center text-sm text-neutral-500">{ui("Loading your Guardians...")}</div>
       </main>
     );
   }
@@ -159,9 +162,7 @@ export default function GuardiansPage() {
   <Link
     href="/dashboard"
     className="inline-flex cursor-pointer items-center rounded-xl border border-white/70 bg-white px-4 py-2 text-sm font-medium text-[#0D2340] transition hover:bg-white/90"
-  >
-    ← Back to Dashboard
-  </Link>
+  >{ui("← Back to Dashboard")}</Link>
 </div>
 
         {/* TITLE */}
@@ -170,14 +171,9 @@ export default function GuardiansPage() {
             <Users className="h-6 w-6 text-[#0F5C88]" />
           </div>
 
-          <h1 className="text-4xl font-light tracking-tight text-[#0D2340]">
-            Your Guardians
-          </h1>
+          <h1 className="text-4xl font-light tracking-tight text-[#0D2340]">{ui("Your Guardians")}</h1>
 
-          <p className="max-w-2xl text-lg leading-8 text-neutral-600">
-            Manage the people you trust to help ETERPAX follow the
-            continuity protocol you authorized.
-          </p>
+          <p className="max-w-2xl text-lg leading-8 text-neutral-600">{ui("Manage the people you trust to help ETERPAX follow the continuity protocol you authorized.")}</p>
         </div>
 
         {/* ACTIVE PLAN CONTEXT */}
@@ -188,15 +184,9 @@ export default function GuardiansPage() {
             </div>
 
             <div>
-              <h2 className="text-lg font-semibold text-[#0D2340]">
-                Your Guardians help ETERPAX follow your plan
-              </h2>
+              <h2 className="text-lg font-semibold text-[#0D2340]">{ui("Your Guardians help ETERPAX follow your plan")}</h2>
 
-              <p className="mt-2 lg:mt-1 text-sm leading-7 lg:leading-6 text-[#496B8D]">
-                Guardians do not receive your Messages and do not
-                control your ETERPAX account. Their role is limited to
-                helping ETERPAX follow the protocol you authorized.
-              </p>
+              <p className="mt-2 lg:mt-1 text-sm leading-7 lg:leading-6 text-[#496B8D]">{ui("Guardians do not receive your Messages and do not control your ETERPAX account. Their role is limited to helping ETERPAX follow the protocol you authorized.")}</p>
             </div>
           </div>
         </div>
@@ -204,13 +194,9 @@ export default function GuardiansPage() {
         {/* GUARDIANS */}
         <section className="space-y-4 lg:space-y-[clamp(0.5rem,1dvh,1rem)]">
           <div>
-            <h2 className="text-xl font-medium text-white">
-              Your Guardians
-            </h2>
+            <h2 className="text-xl font-medium text-white">{ui("Your Guardians")}</h2>
 
-            <p className="mt-1 text-sm text-white/80">
-              You need at least two Guardians. You may have up to six.
-            </p>
+            <p className="mt-1 text-sm text-white/80">{ui("You need at least two Guardians. You may have up to six.")}</p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-y-[clamp(0.5rem,1dvh,1rem)]">
@@ -234,14 +220,13 @@ export default function GuardiansPage() {
                       </div>
 
                       <div>
-                        <h3 className="font-medium text-[#0D2340]">
-                          Guardian {index + 1}
+                        <h3 className="font-medium text-[#0D2340]">{ui("Guardian")} {index + 1}
                         </h3>
 
                         <p className="text-sm text-neutral-500">
                           {isComplete
                             ? guardian.relationship
-                            : "Information required"}
+                            : ui("Information required")}
                         </p>
                       </div>
                     </div>
@@ -251,7 +236,7 @@ export default function GuardiansPage() {
                         type="button"
                         onClick={() => setOpenGuardian(index)}
                         className="cursor-pointer text-[#0A7BA8] transition hover:text-[#08698F]"
-                        aria-label={`Edit Guardian ${index + 1}`}
+                        aria-label={format("Edit Guardian {number}", { number: index + 1 })}
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
@@ -272,18 +257,14 @@ export default function GuardiansPage() {
                         </div>
                       ) : (
                         <>
-                          <p className="text-sm text-neutral-500">
-                            Add this trusted person&apos;s information.
-                          </p>
+                          <p className="text-sm text-neutral-500">{ui("Add this trusted person's information.")}</p>
 
                           <button
                             type="button"
                             onClick={() => setOpenGuardian(index)}
                             className="mt-4 lg:mt-2 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
                           >
-                            <Pencil className="h-4 w-4" />
-                            Add Guardian
-                          </button>
+                            <Pencil className="h-4 w-4" />{ui("Add Guardian")}</button>
                         </>
                       )}
                     </div>
@@ -292,8 +273,8 @@ export default function GuardiansPage() {
                   {isOpen && (
                     <div className="mt-5 space-y-4 lg:mt-2 lg:space-y-2">
                       <Input
-                        label="Guardian's Full Name"
-                        placeholder="Enter full name"
+                        label={ui("Guardian's Full Name")}
+                        placeholder={ui("Enter full name")}
                         value={guardian.name}
                         onChange={(e) =>
                           updateGuardian(
@@ -305,9 +286,9 @@ export default function GuardiansPage() {
                       />
 
                       <Input
-                        label="Guardian's Email"
+                        label={ui("Guardian's Email")}
                         type="email"
-                        placeholder="Enter email address"
+                        placeholder={ui("Enter email address")}
                         value={guardian.email}
                         onChange={(e) =>
                           updateGuardian(
@@ -319,8 +300,8 @@ export default function GuardiansPage() {
                       />
 
                       <Input
-                        label="Relationship"
-                        placeholder="Example: spouse, sibling, friend"
+                        label={ui("Relationship")}
+                        placeholder={ui("Example: spouse, sibling, friend")}
                         value={guardian.relationship}
                         onChange={(e) =>
                           updateGuardian(
@@ -337,18 +318,14 @@ export default function GuardiansPage() {
                             type="button"
                             onClick={() => removeGuardian(index)}
                             className="cursor-pointer text-sm font-medium text-red-500 transition hover:text-red-600"
-                          >
-                            Remove
-                          </button>
+                          >{ui("Remove")}</button>
                         )}
 
                         <button
                           type="button"
                           onClick={() => setOpenGuardian(null)}
                           className="ml-auto cursor-pointer text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
-                        >
-                          Done
-                        </button>
+                        >{ui("Done")}</button>
                       </div>
                     </div>
                   )}
@@ -367,13 +344,9 @@ export default function GuardiansPage() {
                   <Plus className="h-5 w-5 text-[#0A7BA8]" />
                 </div>
 
-                <h3 className="mt-3 lg:mt-1 font-medium text-[#0D2340]">
-                  Add another Guardian
-                </h3>
+                <h3 className="mt-3 lg:mt-1 font-medium text-[#0D2340]">{ui("Add another Guardian")}</h3>
 
-                <p className="mt-1 text-sm text-neutral-500">
-                  Optional
-                </p>
+                <p className="mt-1 text-sm text-neutral-500">{ui("Optional")}</p>
               </button>
             )}
           </div>
@@ -381,12 +354,10 @@ export default function GuardiansPage() {
 
         {/* MAJORITY */}
         <div className="rounded-2xl border border-neutral-200 bg-white p-5 lg:py-[clamp(0.5rem,1dvh,1.25rem)]">
-          <p className="text-sm leading-6 text-neutral-600">
-            With{" "}
+          <p className="text-sm leading-6 text-neutral-600">{ui("With")}{" "}
             <strong className="text-[#0D2340]">
               {activeGuardians.length}
-            </strong>{" "}
-            active Guardians, a majority means{" "}
+            </strong>{" "}{ui("active Guardians, a majority means")}{" "}
             <strong className="text-[#0D2340]">
               {majorityCount}
             </strong>
@@ -399,9 +370,7 @@ export default function GuardiansPage() {
           <Link
             href="/dashboard"
             className="inline-flex cursor-pointer items-center rounded-xl border border-white/70 bg-white px-4 py-2 text-sm font-medium text-[#0D2340] transition hover:bg-white/90"
-          >
-            Cancel
-          </Link>
+          >{ui("Cancel")}</Link>
 
           <button
             type="button"
@@ -409,7 +378,7 @@ export default function GuardiansPage() {
             disabled={!loaded || saving || showSavedNotice}
             className="inline-flex cursor-pointer items-center rounded-full bg-[#0A7BA8] px-10 py-4 font-medium text-white shadow-lg shadow-sky-500/10 transition hover:bg-[#08698F] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? ui("Saving...") : ui("Save Changes")}
           </button>
         </div>
 

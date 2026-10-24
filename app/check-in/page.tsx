@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import { ArrowRight, ShieldCheck, Check, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -7,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { OnboardingFormLayout } from "@/components/auth/OnboardingFormLayout";
 import { supabase } from "@/lib/supabase";
 export default function CheckInPage() {
+  const { message: ui } = useLanguage();
   const [selectedFrequency, setSelectedFrequency] = useState<number | null>(
     null
   );
@@ -55,7 +57,7 @@ export default function CheckInPage() {
     if (saveInFlight.current) return;
 
     if (selectedFrequency === null) {
-      alert("Please select a check-in frequency.");
+      alert(ui("Please select a check-in frequency."));
       return;
     }
 
@@ -64,7 +66,7 @@ export default function CheckInPage() {
       : selectedFrequency;
 
     if (!Number.isInteger(frequencyDays) || frequencyDays < 1) {
-      alert("Please enter a valid number of days.");
+      alert(ui("Please enter a valid number of days."));
       return;
     }
 
@@ -78,7 +80,7 @@ export default function CheckInPage() {
 
       if (error) throw error;
     } catch {
-      alert("We could not save your Check-in settings. Please try again.");
+      alert(ui("We could not save your Check-in settings. Please try again."));
       saveInFlight.current = false;
       setSaving(false);
       return;
@@ -113,30 +115,18 @@ export default function CheckInPage() {
         <section className="mx-auto max-w-5xl px-6 pb-16 pt-10 md:px-10 md:pt-16">
           {/* Intro */}
           <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-[#0A7BA8]">
-              Your Check-in
-            </p>
+            <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-[#0A7BA8]">{ui("Your Check-in")}</p>
 
-            <h1 className="font-serif text-4xl font-light tracking-tight text-[#0D2340] md:text-5xl">
-              Stay connected to what you leave.
-            </h1>
+            <h1 className="font-serif text-4xl font-light tracking-tight text-[#0D2340] md:text-5xl">{ui("Stay connected to what you leave.")}</h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-neutral-600">
-              ETERPAX will reach out with a simple check-in. Your response
-              keeps your plan active and in your control.
-            </p>
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-neutral-600">{ui("ETERPAX will reach out with a simple check-in. Your response keeps your plan active and in your control.")}</p>
           </div>
 
           {/* How Check-in Works */}
           <div className="mx-auto mt-12 max-w-4xl rounded-[28px] border border-white/60 bg-white/95 p-8 shadow-[0_25px_80px_rgba(16,42,67,0.14)] backdrop-blur-sm md:p-10">
-            <h2 className="font-serif text-2xl font-light text-[#102A43] md:text-3xl">
-              How your check-in works
-            </h2>
+            <h2 className="font-serif text-2xl font-light text-[#102A43] md:text-3xl">{ui("How your check-in works")}</h2>
 
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              A simple confirmation keeps your plan active and under your
-              control.
-            </p>
+            <p className="mt-3 text-sm leading-6 text-slate-500">{ui("A simple confirmation keeps your plan active and under your control.")}</p>
 
             <div className="mt-8 grid gap-4 md:grid-cols-3">
               <div className="rounded-2xl bg-[#F7FAFC] p-5">
@@ -144,14 +134,9 @@ export default function CheckInPage() {
                   1
                 </div>
 
-                <h3 className="mt-5 text-base font-medium text-[#102A43]">
-                  ETERPAX checks in
-                </h3>
+                <h3 className="mt-5 text-base font-medium text-[#102A43]">{ui("ETERPAX checks in")}</h3>
 
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  ETERPAX sends you an email with a secure link asking you to
-                  confirm that you are still here and able to respond.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{ui("ETERPAX sends you an email with a secure link asking you to confirm that you are still here and able to respond.")}</p>
               </div>
 
               <div className="rounded-2xl bg-[#F7FAFC] p-5">
@@ -159,14 +144,9 @@ export default function CheckInPage() {
                   2
                 </div>
 
-                <h3 className="mt-5 text-base font-medium text-[#102A43]">
-                  You confirm
-                </h3>
+                <h3 className="mt-5 text-base font-medium text-[#102A43]">{ui("You confirm")}</h3>
 
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  One secure confirmation keeps your plan active and returns
-                  everything to normal.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{ui("One secure confirmation keeps your plan active and returns everything to normal.")}</p>
               </div>
 
               <div className="rounded-2xl bg-[#F7FAFC] p-5">
@@ -174,27 +154,18 @@ export default function CheckInPage() {
                   3
                 </div>
 
-                <h3 className="mt-5 text-base font-medium text-[#102A43]">
-                  If you don&apos;t respond
-                </h3>
+                <h3 className="mt-5 text-base font-medium text-[#102A43]">{ui("If you don't respond")}</h3>
 
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Three consecutive missed check-ins activate the protocol
-                  you chose for your ETERPAX plan.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{ui("Three consecutive missed check-ins activate the protocol you chose for your ETERPAX plan.")}</p>
               </div>
             </div>
           </div>
 
           {/* Frequency */}
           <div className="mx-auto mt-8 max-w-4xl rounded-[28px] border border-white/60 bg-white/95 p-8 shadow-[0_25px_80px_rgba(16,42,67,0.14)] backdrop-blur-sm md:p-10">
-            <h2 className="font-serif text-2xl font-light text-[#102A43] md:text-3xl">
-              Choose your rhythm
-            </h2>
+            <h2 className="font-serif text-2xl font-light text-[#102A43] md:text-3xl">{ui("Choose your rhythm")}</h2>
 
-            <p className="mt-3 text-sm leading-6 text-slate-500">
-              How often would you like ETERPAX to check in with you?
-            </p>
+            <p className="mt-3 text-sm leading-6 text-slate-500">{ui("How often would you like ETERPAX to check in with you?")}</p>
 
             <div className="mt-8 space-y-3">
               {frequencies.map((frequency) => {
@@ -213,11 +184,11 @@ export default function CheckInPage() {
                   >
                     <span>
                       <span className="block text-base font-medium text-[#102A43]">
-                        {frequency.title}
+                        {ui(frequency.title)}
                       </span>
 
                       <span className="mt-1 block text-sm text-slate-500">
-                        {frequency.description}
+                        {ui(frequency.description)}
                       </span>
                     </span>
 
@@ -241,13 +212,9 @@ export default function CheckInPage() {
                 }`}
               >
                 <span>
-                  <span className="block text-base font-medium text-[#102A43]">
-                    Custom check-in
-                  </span>
+                  <span className="block text-base font-medium text-[#102A43]">{ui("Custom check-in")}</span>
 
-                  <span className="mt-1 block text-sm text-slate-500">
-                    Choose the rhythm that works best for you.
-                  </span>
+                  <span className="mt-1 block text-sm text-slate-500">{ui("Choose the rhythm that works best for you.")}</span>
                 </span>
 
                 {selectedFrequency === 0 && (
@@ -264,12 +231,10 @@ export default function CheckInPage() {
                 <label
                   htmlFor="customDays"
                   className="block text-sm font-medium text-[#102A43]"
-                >
-                  Choose your check-in frequency
-                </label>
+                >{ui("Choose your check-in frequency")}</label>
 
                 <div className="mt-3 flex items-center gap-3">
-                  <span className="text-sm text-slate-600">Every</span>
+                  <span className="text-sm text-slate-600">{ui("Every")}</span>
 
                   <input
                     id="customDays"
@@ -281,43 +246,28 @@ export default function CheckInPage() {
                     className="w-28 rounded-xl border border-slate-200 bg-white px-4 py-3 text-center text-sm text-slate-900 outline-none transition"
                   />
 
-                  <span className="text-sm text-slate-600">days</span>
+                  <span className="text-sm text-slate-600">{ui("days")}</span>
                 </div>
 
-                <p className="mt-3 text-xs leading-5 text-slate-500">
-                  You can change your check-in rhythm anytime from Settings.
-                </p>
+                <p className="mt-3 text-xs leading-5 text-slate-500">{ui("You can change your check-in rhythm anytime from Settings.")}</p>
               </div>
             )}
           </div>
 
           {/* Protocol */}
           <div className="mx-auto mt-8 max-w-4xl rounded-[28px] border border-[#C9E5EF] bg-[#F0F7FA] p-8 md:p-10">
-            <h2 className="font-serif text-2xl font-light text-[#102A43] md:text-3xl">
-              If you don&apos;t respond
-            </h2>
+            <h2 className="font-serif text-2xl font-light text-[#102A43] md:text-3xl">{ui("If you don't respond")}</h2>
 
-            <p className="mt-4 text-sm leading-7 text-[#35627A]">
-              If you miss one check-in, nothing happens. ETERPAX waits for
-              your next response.
-            </p>
+            <p className="mt-4 text-sm leading-7 text-[#35627A]">{ui("If you miss one check-in, nothing happens. ETERPAX waits for your next response.")}</p>
 
-            <p className="mt-4 text-sm leading-7 text-[#35627A]">
-              If you miss three consecutive check-ins, <strong>your ETERPAX
-              protocol activates.</strong>
+            <p className="mt-4 text-sm leading-7 text-[#35627A]">{ui("If you miss three consecutive check-ins,")} <strong>{ui("your ETERPAX protocol activates.")}</strong>
             </p>
 
             <div className="mt-5 rounded-2xl border border-[#B8DCE8] bg-white/70 px-5 py-4">
-              <p className="text-sm font-medium leading-6 text-[#102A43]">
-                24 hours after the third missed check-in, your Guardians will
-                receive an email asking them to confirm your situation.
-              </p>
+              <p className="text-sm font-medium leading-6 text-[#102A43]">{ui("24 hours after the third missed check-in, your Guardians will receive an email asking them to confirm your situation.")}</p>
             </div>
 
-            <p className="mt-5 text-sm leading-7 text-[#35627A]">
-              This is the protocol you are choosing now, while you are here
-              and in control.
-            </p>
+            <p className="mt-5 text-sm leading-7 text-[#35627A]">{ui("This is the protocol you are choosing now, while you are here and in control.")}</p>
           </div>
 
           
@@ -325,25 +275,15 @@ export default function CheckInPage() {
           {/* A meaningful step forward */}
 <div className="mx-auto mt-8 max-w-4xl rounded-[28px] border border-white/60 bg-white/90 p-8 shadow-[0_20px_60px_rgba(16,42,67,0.10)] backdrop-blur-sm md:p-10">
   <div className="max-w-2xl">
-    <p className="mb-3 text-sm font-medium uppercase tracking-[0.22em] text-[#0A7BA8]">
-      An important step
-    </p>
+    <p className="mb-3 text-sm font-medium uppercase tracking-[0.22em] text-[#0A7BA8]">{ui("An important step")}</p>
 
     
 
-    <p className="mt-5 text-base leading-7 text-[#64748B]">
-      Your Continuity Plan is now taking shape.
-      You’ve chosen the people you trust and how ETERPAX should stay connected to you.
-    </p>
+    <p className="mt-5 text-base leading-7 text-[#64748B]">{ui("Your Continuity Plan is now taking shape. You’ve chosen the people you trust and how ETERPAX should stay connected to you.")}</p>
 
-    <p className="mt-4 text-base leading-7 text-[#64748B]">
-      What you leave is becoming something that can stay —
-      your words, your memories, your voice, and the things only you can give.
-    </p>
+    <p className="mt-4 text-base leading-7 text-[#64748B]">{ui("What you leave is becoming something that can stay — your words, your memories, your voice, and the things only you can give.")}</p>
 
-    <h2 className="font-serif text-3xl leading-tight text-[#102A43] md:text-4xl">
-  You’ve begun something that WILL stay.
-</h2>
+    <h2 className="font-serif text-3xl leading-tight text-[#102A43] md:text-4xl">{ui("You’ve begun something that WILL stay.")}</h2>
   </div>
 </div>
 
@@ -355,7 +295,7 @@ export default function CheckInPage() {
               disabled={saving}
               className="inline-flex w-full items-center justify-center gap-3 rounded-full bg-[#0A7BA8] px-7 py-4 text-sm font-medium text-white shadow-xl shadow-black/10 transition hover:bg-[#08698F]"
             >
-              {saving ? "Saving..." : "Continue to Protect"}
+              {saving ? ui("Saving...") : ui("Continue to Protect")}
               <ArrowRight className="h-4 w-4" />
             </button>
           </div>
