@@ -1,9 +1,11 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 import { useEffect, useState } from "react";
 import { plans, type Plan } from "@/lib/billing/plans";
 import { supabase } from "@/lib/supabase";
 
 export function PlanSelection() {
+  const { message: ui } = useLanguage();
   const [available, setAvailable] = useState<Record<Plan, boolean>>({ monthly: false, annual: false, lifetime: false });
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -33,17 +35,17 @@ export function PlanSelection() {
   return <div>
     <div className="grid gap-4 md:grid-cols-3">
       {(Object.keys(plans) as Plan[]).map(plan => <section key={plan} className="rounded-2xl border border-slate-200 bg-white p-6">
-        <h2 className="text-xl font-medium">{plans[plan].name}</h2>
-        <p className="mt-3 text-3xl">{plans[plan].price}</p><p>{plans[plan].period}</p>
-        <p className="mt-3 text-sm">{plans[plan].description}</p>
-        <p className="mt-3 text-sm">Unlimited messages. Supported formats and file-size limits still apply.</p>
+        <h2 className="text-xl font-medium">{ui(plans[plan].name)}</h2>
+        <p className="mt-3 text-3xl">{plans[plan].price}</p><p>{ui(plans[plan].period)}</p>
+        <p className="mt-3 text-sm">{ui(plans[plan].description)}</p>
+        <p className="mt-3 text-sm">{ui("Unlimited messages. Supported formats and file-size limits still apply.")}</p>
         <button type="button" disabled={busy || !available[plan]} onClick={() => void checkout(plan)}
           className="mt-5 rounded-lg bg-[#071B2E] px-5 py-3 text-white disabled:opacity-50">
-          {available[plan] ? "Choose plan" : "Currently unavailable"}
+          {available[plan] ? ui("Choose plan") : ui("Currently unavailable")}
         </button>
       </section>)}
     </div>
-    <p className="mt-4 text-sm">Purchasing a plan does not automatically cancel any existing subscription.</p>
-    {notice && <p role="status" className="mt-4">{notice}</p>}
+    <p className="mt-4 text-sm">{ui("Purchasing a plan does not automatically cancel any existing subscription.")}</p>
+    {notice && <p role="status" className="mt-4">{ui(notice)}</p>}
   </div>;
 }

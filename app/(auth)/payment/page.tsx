@@ -1,8 +1,10 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import { ShieldCheck } from "lucide-react";
 import { PlanSelection } from "@/components/PlanSelection";
 export default function PaymentPage() {
+  const { message: ui } = useLanguage();
   return (
     <main
       className="min-h-screen overflow-y-auto bg-cover bg-center bg-fixed text-[#102A43]"
@@ -21,25 +23,16 @@ export default function PaymentPage() {
         </div>
 
         <div className="flex items-center gap-2 text-sm text-[#64748B]">
-          <ShieldCheck className="h-4 w-4" />
-          Secure Checkout
-        </div>
+          <ShieldCheck className="h-4 w-4" />{ui("Secure Checkout")}</div>
       </header>
 
       <section className="mx-auto max-w-5xl px-6 pb-16 pt-8 md:px-10">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-[#0A7BA8]">
-            Protect Your Continuity Plan
-          </p>
+          <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-[#0A7BA8]">{ui("Protect Your Continuity Plan")}</p>
 
-          <h1 className="font-serif text-4xl font-light tracking-tight md:text-5xl">
-            Your plan is ready.
-          </h1>
+          <h1 className="font-serif text-4xl font-light tracking-tight md:text-5xl">{ui("Your plan is ready.")}</h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-            Secure your ETERPAX plan and keep what matters protected,
-            privately and intentionally.
-          </p>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">{ui("Secure your ETERPAX plan and keep what matters protected, privately and intentionally.")}</p>
 
         </div>
       </section>

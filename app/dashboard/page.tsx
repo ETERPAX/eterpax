@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import Link from "next/link";
 import { parseActivationEligibility, protectionPresentation } from "@/lib/activation-policy/presentation";
@@ -42,6 +43,7 @@ function isCheckInState(value: unknown): value is CheckInState {
 }
 
 export default function DashboardPage() {
+  const { message: ui, format } = useLanguage();
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [guardianCount, setGuardianCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
@@ -275,9 +277,7 @@ setMessages(messageData ?? []);
 <Link
   href="/settings"
   className="inline-flex items-center justify-center rounded-full border border-white/30 bg-white/90 px-6 py-3 text-sm font-medium text-[#17375E] shadow-lg backdrop-blur-sm transition hover:bg-white"
->
-  Settings
-</Link>
+>{ui("Settings")}</Link>
           </header>
 
           {/* Main */}
@@ -286,20 +286,11 @@ setMessages(messageData ?? []);
               <div className="mx-auto max-w-6xl">
                 {/* Intro */}
                 <div className="mb-8 max-w-2xl lg:mb-[clamp(0.5rem,1dvh,2rem)]">
-                  <p className="text-sm font-medium uppercase tracking-[0.24em] text-white/75">
-                    Your ETERPAX
-                  </p>
+                  <p className="text-sm font-medium uppercase tracking-[0.24em] text-white/75">{ui("Your ETERPAX")}</p>
 
-                  <h1 className="mt-3 font-serif text-5xl leading-[1.05] tracking-tight text-white md:text-6xl lg:mt-1 lg:text-[clamp(3rem,6.65dvh,4.5rem)]">
-                    A place for what
-                    <br />
-                    you want to leave.
-                  </h1>
+                  <h1 className="mt-3 font-serif text-5xl leading-[1.05] tracking-tight text-white md:text-6xl lg:mt-1 lg:text-[clamp(3rem,6.65dvh,4.5rem)]">{ui("A place for what")}<br />{ui("you want to leave.")}</h1>
 
-                  <p className="mt-6 max-w-xl text-lg leading-8 text-white/80 lg:mt-[clamp(0.25rem,0.5dvh,1.5rem)]">
-                    Your words, your memories, and the things only you can
-                    give.
-                  </p>
+                  <p className="mt-6 max-w-xl text-lg leading-8 text-white/80 lg:mt-[clamp(0.25rem,0.5dvh,1.5rem)]">{ui("Your words, your memories, and the things only you can give.")}</p>
                 </div>
 
                 {/* Messages — Main Card */}
@@ -311,32 +302,22 @@ setMessages(messageData ?? []);
                       </div>
 
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0A7BA8]">
-                          Your Messages
-                        </p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0A7BA8]">{ui("Your Messages")}</p>
 
                         {hasMessages ? (
                           <>
                             <h2 className="mt-2 text-2xl font-medium text-[#0D2340]">
                               {messageCount}{" "}
-                              {messageCount === 1 ? "Message" : "Messages"}
+                              {messageCount === 1 ? ui("Message") : ui("Messages")}
                             </h2>
 
-                            <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600">
-                              What you choose to leave, in your own words and
-                              your own way.
-                            </p>
+                            <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600">{ui("What you choose to leave, in your own words and your own way.")}</p>
                           </>
                         ) : (
                           <>
-                            <h2 className="mt-2 text-2xl font-medium text-[#0D2340]">
-                              Nothing here yet.
-                            </h2>
+                            <h2 className="mt-2 text-2xl font-medium text-[#0D2340]">{ui("Nothing here yet.")}</h2>
 
-                            <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600">
-                              When you&apos;re ready, create something that
-                              stays.
-                            </p>
+                            <p className="mt-2 max-w-lg text-sm leading-6 text-neutral-600">{ui("When you're ready, create something that stays.")}</p>
                           </>
                         )}
                       </div>
@@ -347,8 +328,8 @@ setMessages(messageData ?? []);
                       className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#0A7BA8] px-7 py-3.5 text-sm font-medium text-white shadow-lg shadow-[#0A7BA8]/20 transition hover:-translate-y-0.5 hover:bg-[#08698F]"
                     >
                       {hasMessages
-                        ? "Leave Something New"
-                        : "Create Your First Message"}
+                        ? ui("Leave Something New")
+                        : ui("Create Your First Message")}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                     {hasMessages && (
@@ -356,9 +337,7 @@ setMessages(messageData ?? []);
     type="button"
     onClick={() => setShowMessagesModal(true)}
     className="inline-flex shrink-0 items-center justify-center rounded-full bg-[#0A7BA8] px-5 py-2.5 text-sm font-medium text-white shadow-md transition hover:bg-[#08698f]"
-  >
-    View Messages
-  </button>
+  >{ui("View Messages")}</button>
 )}
                   </div>
                 </div>
@@ -380,24 +359,18 @@ setMessages(messageData ?? []);
                       )}
                     </div>
 
-                    <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">
-                      Your Guardians
-                    </p>
+                    <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">{ui("Your Guardians")}</p>
 
                     <h3 className="mt-2 lg:mt-1 text-xl font-medium text-[#0D2340]">
                       {hasGuardians
-                        ? `${guardianCount} ${
-                            guardianCount === 1 ? "Guardian" : "Guardians"
-                          }`
-                        : "Not started"}
+                        ? `${guardianCount} ${ui(guardianCount === 1 ? "Guardian" : "Guardians")}`
+                        : ui("Not started")}
                     </h3>
 
-                    <p className="mt-2 lg:mt-1 text-sm leading-6 lg:leading-5 text-neutral-500">
-                      People you trust to help carry out your ETERPAX protocol.
-                    </p>
+                    <p className="mt-2 lg:mt-1 text-sm leading-6 lg:leading-5 text-neutral-500">{ui("People you trust to help carry out your ETERPAX protocol.")}</p>
 
                     <div className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] flex items-center text-sm font-medium text-[#17375E]">
-                      {hasGuardians ? "View Guardians" : "Choose your Guardians"}
+                      {hasGuardians ? ui("View Guardians") : ui("Choose your Guardians")}
                       <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />
                     </div>
                   </Link>
@@ -412,26 +385,21 @@ setMessages(messageData ?? []);
                       </div>
                     </div>
 
-                    <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">
-                      Your Check-in
-                    </p>
+                    <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">{ui("Your Check-in")}</p>
 
                     <h3 className="mt-2 lg:mt-1 text-xl font-medium text-[#0D2340]">
-                    {checkInLoading ? "Loading..." : checkIn ? `Every ${checkIn.frequency_days} days` : checkInError ? "Unavailable" : "Not configured"}
+                    {checkInLoading ? ui("Loading...") : checkIn ? format("Every {count} days", { count: checkIn.frequency_days }) : checkInError ? ui("Unavailable") : ui("Not configured")}
                     </h3>
 
-                    <p className="mt-2 lg:mt-1 text-sm leading-6 lg:leading-5 text-neutral-500">
-                      Stay connected with ETERPAX through your chosen
-                      check-in schedule.
-                    </p>
+                    <p className="mt-2 lg:mt-1 text-sm leading-6 lg:leading-5 text-neutral-500">{ui("Stay connected with ETERPAX through your chosen check-in schedule.")}</p>
 
                     {checkIn && (
                       <div className="mt-3 lg:mt-[clamp(0.375rem,0.75dvh,0.75rem)] space-y-1 lg:space-y-0 text-sm leading-6 lg:leading-5 text-neutral-500">
-                        <p>{!checkIn.enabled ? "Check-ins paused" : checkIn.status === "scheduled" ? "Scheduled" : checkIn.status === "awaiting_response" ? "Awaiting your response" : "Escalation pending"}</p>
-                        <p>Missed check-ins: {checkIn.missed_count}</p>
-                        {checkIn.last_check_in_at && <p>Last confirmed: {new Date(checkIn.last_check_in_at).toLocaleString()}</p>}
-                        {checkIn.enabled && checkIn.next_check_in_at && <p>Next check-in: {new Date(checkIn.next_check_in_at).toLocaleString()}</p>}
-                        {checkIn.enabled && checkIn.response_deadline_at && <p>Respond by: {new Date(checkIn.response_deadline_at).toLocaleString()}</p>}
+                        <p>{!checkIn.enabled ? ui("Check-ins paused") : checkIn.status === "scheduled" ? ui("Scheduled") : checkIn.status === "awaiting_response" ? ui("Awaiting your response") : ui("Escalation pending")}</p>
+                        <p>{ui("Missed check-ins:")} {checkIn.missed_count}</p>
+                        {checkIn.last_check_in_at && <p>{ui("Last confirmed:")} {new Date(checkIn.last_check_in_at).toLocaleString()}</p>}
+                        {checkIn.enabled && checkIn.next_check_in_at && <p>{ui("Next check-in:")} {new Date(checkIn.next_check_in_at).toLocaleString()}</p>}
+                        {checkIn.enabled && checkIn.response_deadline_at && <p>{ui("Respond by:")} {new Date(checkIn.response_deadline_at).toLocaleString()}</p>}
                       </div>
                     )}
 
@@ -442,14 +410,12 @@ setMessages(messageData ?? []);
                       aria-busy={confirmingCheckIn}
                       className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] inline-flex items-center justify-center rounded-full bg-[#0A7BA8] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#08698F] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                      {confirmingCheckIn ? "Confirming..." : "I'm OK"}
+                      {confirmingCheckIn ? ui("Confirming...") : ui("I'm OK")}
                     </button>
-                    {checkInSuccess && <p role="status" className="mt-3 lg:mt-[clamp(0.375rem,0.75dvh,0.75rem)] text-sm text-[#0A7BA8]">Thank you. Your Check-in is confirmed.{checkIn && !checkIn.enabled ? " Check-ins remain paused." : ""}</p>}
-                    {checkInError && <p role="alert" className="mt-3 lg:mt-[clamp(0.375rem,0.75dvh,0.75rem)] text-sm text-red-700">{checkInError}</p>}
+                    {checkInSuccess && <p role="status" className="mt-3 lg:mt-[clamp(0.375rem,0.75dvh,0.75rem)] text-sm text-[#0A7BA8]">{ui("Thank you. Your Check-in is confirmed.")}{checkIn && !checkIn.enabled ? ui(" Check-ins remain paused.") : ""}</p>}
+                    {checkInError && <p role="alert" className="mt-3 lg:mt-[clamp(0.375rem,0.75dvh,0.75rem)] text-sm text-red-700">{ui(checkInError)}</p>}
 
-                    <Link href="/check-in-settings" className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] flex items-center text-sm font-medium text-[#17375E]">
-                    Manage Check-in
-                      <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />
+                    <Link href="/check-in-settings" className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] flex items-center text-sm font-medium text-[#17375E]">{ui("Manage Check-in")}<ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />
                     </Link>
                   </div>
 
@@ -459,38 +425,32 @@ setMessages(messageData ?? []);
                       <ShieldCheck className="h-5 w-5 text-[#0A7BA8]" />
                     </div>
 
-                    <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">
-                      Your Protection
-                    </p>
+                    <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-xs font-semibold uppercase tracking-[0.16em] text-[#0A7BA8]">{ui("Your Protection")}</p>
 
                     <h3 className="mt-2 lg:mt-1 text-xl font-medium text-[#0D2340]">
-  {protection.title}
+  {ui(protection.title)}
 </h3>
 
                     <p className="mt-2 lg:mt-1 text-sm leading-6 lg:leading-5 text-neutral-500">
-                      {protection.detail}
+                      {ui(protection.detail)}
                     </p>
 
                     <p className="mt-5 lg:mt-[clamp(0.375rem,0.75dvh,1.25rem)] text-sm font-medium text-neutral-400">
-                      {protection.deadline}
+                      {ui(protection.deadline)}
                     </p>
                     <button
                       type="button"
                       onClick={() => setShowPlanModal(true)}
                       aria-haspopup="dialog"
                       className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded text-sm font-medium text-[#17375E] hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0A7BA8]"
-                    >
-                      View Your Plan
-                      <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                    >{ui("View Your Plan")}<ArrowRight aria-hidden="true" className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
 
                 {/* Closing line */}
                 <div className="mt-8 text-center lg:mt-[clamp(0.5rem,1dvh,2rem)]">
-                  <p className="text-sm tracking-wide text-white/70">
-                    Private by design. Always in your control.
-                  </p>
+                  <p className="text-sm tracking-wide text-white/70">{ui("Private by design. Always in your control.")}</p>
                 </div>
               </div>
             </div>
@@ -513,32 +473,24 @@ setMessages(messageData ?? []);
         type="button"
         onClick={() => setShowMessagesModal(false)}
         className="absolute right-7 top-7 flex h-10 w-10 items-center justify-center rounded-full text-xl text-neutral-500 transition hover:bg-black/5 hover:text-[#17375E]"
-        aria-label="Close messages"
+        aria-label={ui("Close messages")}
       >
         ×
       </button>
 
       <div className="pr-14">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0A7BA8]">
-          Your Messages
-        </p>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0A7BA8]">{ui("Your Messages")}</p>
 
-        <h2 className="mt-3 font-serif text-4xl text-[#0D2340]">
-          What you&apos;ve chosen to preserve.
-        </h2>
+        <h2 className="mt-3 font-serif text-4xl text-[#0D2340]">{ui("What you've chosen to preserve.")}</h2>
 
-        <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-500">
-          Your words and memories, kept together in one place.
-        </p>
+        <p className="mt-3 max-w-xl text-sm leading-6 text-neutral-500">{ui("Your words and memories, kept together in one place.")}</p>
         <Link
   href="/your-messages?new=true"
   className="mt-5 inline-flex items-center text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
->
-  + Leave Something New
-</Link>
+>{ui("+ Leave Something New")}</Link>
       </div>
 
-      {deletion.notice && <p role="status" className="mt-5 rounded-xl border border-neutral-300 bg-white p-4 text-sm text-[#0D2340]">{deletion.notice}</p>}
+      {deletion.notice && <p role="status" className="mt-5 rounded-xl border border-neutral-300 bg-white p-4 text-sm text-[#0D2340]">{ui(deletion.notice)}</p>}
       <div className="mt-8 max-h-[360px] space-y-3 overflow-y-auto pr-2">
   {messages.map((message) => {
     const state = deletion.states[message.id];
@@ -560,40 +512,36 @@ setMessages(messageData ?? []);
       </div>
 
       <div className="flex flex-wrap items-center gap-4 sm:ml-6">
-        {unavailable ? <span className="text-sm text-neutral-500">Edit unavailable</span> : <>
+        {unavailable ? <span className="text-sm text-neutral-500">{ui("Edit unavailable")}</span> : <>
         <Link
           href={`/your-messages?message=${message.id}`}
           className="text-sm font-medium text-[#17375E] transition hover:text-[#0A7BA8]"
-        >
-          Edit
-        </Link>
+        >{ui("Edit")}</Link>
 
         <Link
           href={`/review?message=${message.id}`}
           className="text-sm font-medium text-[#0A7BA8] transition hover:text-[#08698F]"
-        >
-          Preview
-        </Link>
+        >{ui("Preview")}</Link>
         </>}
-        {(state || pending) && <span role="status" className="text-sm font-medium text-[#0D2340]">{state ? deletionLabels[state] : "Cleanup pending"}</span>}
+        {(state || pending) && <span role="status" className="text-sm font-medium text-[#0D2340]">{state ? ui(deletionLabels[state]) : ui("Cleanup pending")}</span>}
         {deletion.enabled && (pending || state === "unknown" ? (
           <button type="button" disabled={deletion.busy !== null}
             onClick={() => void deletion.run(message.id, "check")}
-            className="text-sm font-medium text-[#0A7BA8] underline disabled:opacity-50">Check deletion status</button>
+            className="text-sm font-medium text-[#0A7BA8] underline disabled:opacity-50">{ui("Check deletion status")}</button>
         ) : message.status === "draft" && message.deletion_state === "active" ? (
           <button type="button" disabled={deletion.busy !== null}
             onClick={() => void deletion.run(message.id, "delete", message.recipient_name)}
-            className="text-sm font-medium text-red-700 disabled:opacity-50">Delete Message</button>
+            className="text-sm font-medium text-red-700 disabled:opacity-50">{ui("Delete Message")}</button>
         ) : null)}
       </div>
     </div>
   );})}
   {deletion.pending.filter(id => !messages.some(message => message.id === id)).map(id => (
     <div key={id} className="rounded-xl border border-neutral-300 bg-white p-4 text-sm text-[#0D2340]">
-      <p role="status">{deletion.states[id] ? deletionLabels[deletion.states[id]] : "Cleanup pending"}</p>
+      <p role="status">{deletion.states[id] ? ui(deletionLabels[deletion.states[id]]) : ui("Cleanup pending")}</p>
       {deletion.enabled && <button type="button" disabled={deletion.busy !== null}
         onClick={() => void deletion.run(id, "check")}
-        className="mt-2 text-[#0A7BA8] underline disabled:opacity-50">Check deletion status</button>}
+        className="mt-2 text-[#0A7BA8] underline disabled:opacity-50">{ui("Check deletion status")}</button>}
     </div>
   ))}
 </div>

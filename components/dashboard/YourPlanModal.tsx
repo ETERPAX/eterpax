@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
@@ -20,6 +21,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export function YourPlanModal({ onClose }: { onClose: () => void }) {
+  const { message: ui } = useLanguage();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [subscription, setSubscription] = useState<SubscriptionState>({ kind: "loading" });
 
@@ -90,7 +92,7 @@ export function YourPlanModal({ onClose }: { onClose: () => void }) {
       <button
         type="button"
         onClick={onClose}
-        aria-label="Close Your Plan"
+        aria-label={ui("Close Your Plan")}
         className="absolute right-4 top-4 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full bg-[#0A7BA8]/10 text-2xl text-[#17375E] transition hover:bg-[#0A7BA8]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0A7BA8]"
       >
         <span aria-hidden="true">×</span>
@@ -98,15 +100,15 @@ export function YourPlanModal({ onClose }: { onClose: () => void }) {
 
       <div className="pr-12">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#0A7BA8]">ETERPAX</p>
-        <h2 id="your-plan-title" className="mt-2 font-serif text-3xl">Your Plan</h2>
+        <h2 id="your-plan-title" className="mt-2 font-serif text-3xl">{ui("Your Plan")}</h2>
       </div>
 
       <div className="mt-6"><PlanSelection /></div>
 
       <section className="mt-5 rounded-2xl border border-neutral-200 bg-white p-5" aria-labelledby="subscription-status-title">
-        <h3 id="subscription-status-title" className="font-medium">Your Subscription Status</h3>
-        <p role="status" aria-live="polite" aria-atomic="true" className="mt-2 text-sm leading-6 text-neutral-600">{statusText}</p>
-        <p className="mt-3 text-xs leading-5 text-neutral-500">This status does not identify your purchased plan, price, or billing interval.</p>
+        <h3 id="subscription-status-title" className="font-medium">{ui("Your Subscription Status")}</h3>
+        <p role="status" aria-live="polite" aria-atomic="true" className="mt-2 text-sm leading-6 text-neutral-600">{ui(statusText)}</p>
+        <p className="mt-3 text-xs leading-5 text-neutral-500">{ui("This status does not identify your purchased plan, price, or billing interval.")}</p>
       </section>
     </dialog>
   );
