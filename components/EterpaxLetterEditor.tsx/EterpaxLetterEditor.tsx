@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import { EditorContent, useEditor } from "@tiptap/react";
 import { useRef } from "react";
@@ -18,6 +19,9 @@ export default function EterpaxLetterEditor({
   value,
   onChange,
 }: EterpaxLetterEditorProps) {
+  const { message: ui } = useLanguage();
+  const placeholder = ui("Dear...\nWrite what you want them to know.");
+  const placeholderRef = useRef(placeholder);
     const savedSelection = useRef<{ from: number; to: number } | null>(null);
     const [showColorPicker, setShowColorPicker] = useState(false);
   const editor = useEditor({
@@ -28,7 +32,7 @@ TextAlign.configure({
   types: ["heading", "paragraph"],
 }),
 Placeholder.configure({
-  placeholder: "Dear...\nWrite what you want them to know.",
+  placeholder: () => placeholderRef.current,
 }),
       ],
     content: value || "<p></p>",
@@ -50,6 +54,12 @@ Placeholder.configure({
     }
   }, [editor]);
   
+  useEffect(() => {
+    placeholderRef.current = placeholder;
+    // Refresh placeholder decorations without changing the letter or editor history.
+    if (editor) editor.view.dispatch(editor.state.tr.setMeta("addToHistory", false));
+  }, [editor, placeholder]);
+
   if (!editor) {
     return null;
   }
@@ -59,6 +69,7 @@ Placeholder.configure({
       <div className="flex flex-wrap items-center gap-2 text-slate-700">
           <button
             type="button"
+            aria-label={ui("Bold")}
             onClick={() => editor.chain().focus().toggleBold().run()}
             className={`rounded-lg px-3 py-2 text-sm font-semibold ${
               editor.isActive("bold")
@@ -71,6 +82,7 @@ Placeholder.configure({
   
           <button
             type="button"
+            aria-label={ui("Italic")}
             onClick={() => editor.chain().focus().toggleItalic().run()}
             className={`rounded-lg px-3 py-2 text-sm italic ${
               editor.isActive("italic")
@@ -83,6 +95,7 @@ Placeholder.configure({
   
           <button
             type="button"
+            aria-label={ui("Underline")}
             onClick={() => editor.chain().focus().toggleUnderline().run()}
             className={`rounded-lg px-3 py-2 text-sm underline ${
               editor.isActive("underline")
@@ -121,7 +134,7 @@ Placeholder.configure({
             }}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
           >
-            <option value="">Font</option>
+            <option value="">{ui("Font")}</option>
             <option value="Arial">Arial</option>
             <option value="Georgia">Georgia</option>
             <option value="Times New Roman">
@@ -148,7 +161,7 @@ Placeholder.configure({
             }}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
           >
-            <option value="">Size</option>
+            <option value="">{ui("Size")}</option>
             <option value="12px">12</option>
             <option value="14px">14</option>
             <option value="16px">16</option>
@@ -159,7 +172,7 @@ Placeholder.configure({
   
           <button
   type="button"
-  title="Text color"
+  title={ui("Text color")}
   onClick={() => setShowColorPicker((current) => !current)}
   className="h-9 w-10 cursor-pointer rounded-lg border border-slate-200 bg-white p-1 text-lg"
 >
@@ -208,9 +221,7 @@ Placeholder.configure({
               editor.chain().focus().setTextAlign("left").run()
             }
             className="rounded-lg px-3 py-2 text-sm hover:bg-slate-200"
-          >
-            Left
-          </button>
+          >{ui("Left")}</button>
   
           <button
             type="button"
@@ -218,9 +229,7 @@ Placeholder.configure({
               editor.chain().focus().setTextAlign("center").run()
             }
             className="rounded-lg px-3 py-2 text-sm hover:bg-slate-200"
-          >
-            Center
-          </button>
+          >{ui("Center")}</button>
   
           <button
             type="button"
@@ -228,9 +237,7 @@ Placeholder.configure({
               editor.chain().focus().setTextAlign("right").run()
             }
             className="rounded-lg px-3 py-2 text-sm hover:bg-slate-200"
-          >
-            Right
-          </button>
+          >{ui("Right")}</button>
         </div>
       </div>
   

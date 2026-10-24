@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -22,6 +23,7 @@ async function callDeletion(body?: object) {
 }
 
 export function useMessageDeletion(onUnavailable: (id: string) => void, onDeleted?: (id: string) => void) {
+  const { format, message: ui } = useLanguage();
   const [enabled, setEnabled] = useState(false);
   const [pending, setPending] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -41,7 +43,7 @@ export function useMessageDeletion(onUnavailable: (id: string) => void, onDelete
   async function run(id: string, action: "delete" | "check", recipient?: string) {
     if (!enabled || inFlight.current) return;
     if (action === "delete" && (pending.includes(id) || ["pending", "unknown", "deleted"].includes(states[id]))) return;
-    if (action === "delete" && !window.confirm(`Delete this message for ${recipient ?? "this recipient"} and its attachments? This cannot be undone. Files used by another message will be retained.`)) return;
+    if (action === "delete" && !window.confirm(format("Delete this message for {recipient} and its attachments? This cannot be undone. Files used by another message will be retained.", { recipient: recipient ?? ui("this recipient") }))) return;
     inFlight.current = true;
     setBusy(id);
     setStates(current => ({ ...current, [id]: "deleting" }));

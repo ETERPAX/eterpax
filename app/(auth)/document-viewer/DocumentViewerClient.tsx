@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -26,6 +27,7 @@ export default function DocumentViewerPage() {
 }
 
 function DocumentViewer({ documentUrl, filename, backHref }: { documentUrl: string | null; filename: string; backHref: string }) {
+  const { message: ui } = useLanguage();
   const router = useRouter();
   const [resolved, setResolved] = useState<{ url: string; mime: string; text: string } | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -97,26 +99,18 @@ function DocumentViewer({ documentUrl, filename, backHref }: { documentUrl: stri
           onClick={() => router.push(backHref)}
           className="flex items-center gap-2 text-sm font-medium text-[#0A7BA8] transition hover:opacity-70"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back
-        </button>
+          <ArrowLeft className="h-4 w-4" />{ui("Back")}</button>
 
         <div className="flex items-center gap-2 text-sm text-[#64748B]">
-          <Lock className="h-4 w-4" />
-          Private & Secure
-        </div>
+          <Lock className="h-4 w-4" />{ui("Private & Secure")}</div>
       </header>
 
       {/* Title */}
       <section className="px-6 py-6 md:px-10">
         <div className="mx-auto max-w-6xl">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#64748B]">
-            DOCUMENT VIEWER
-          </p>
+          <p className="text-xs uppercase tracking-[0.2em] text-[#64748B]">{ui("DOCUMENT VIEWER")}</p>
 
-          <h1 className="mt-2 font-serif text-3xl font-light text-[#102A43] md:text-4xl">
-            Your secure document
-          </h1>
+          <h1 className="mt-2 font-serif text-3xl font-light text-[#102A43] md:text-4xl">{ui("Your secure document")}</h1>
         </div>
       </section>
 
@@ -125,19 +119,18 @@ function DocumentViewer({ documentUrl, filename, backHref }: { documentUrl: stri
         <div className="mx-auto max-w-6xl">
           {!documentUrl || loadError ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-              <p className="text-slate-500">Document unavailable.</p>
+              <p className="text-slate-500">{ui("Document unavailable.")}</p>
             </div>
           ) : !resolved ? (
-            <p className="p-10 text-center text-slate-500">Loading secure document...</p>
+            <p className="p-10 text-center text-slate-500">{ui("Loading secure document...")}</p>
           ) : resolved.mime === "text/plain" ? (
             <pre className="max-h-[75vh] overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-white p-6 text-sm text-slate-800">
               {resolved.text}
             </pre>
           ) : resolved.mime !== "application/pdf" ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm">
-              <p className="text-slate-500">Preview unavailable for this format.</p>
-              <a href={resolved.url} download={filename} className="mt-4 inline-block text-[#0A7BA8] underline">
-                Download {filename}
+              <p className="text-slate-500">{ui("Preview unavailable for this format.")}</p>
+              <a href={resolved.url} download={filename} className="mt-4 inline-block text-[#0A7BA8] underline">{ui("Download")} {filename}
               </a>
             </div>
           ) : (
@@ -148,14 +141,10 @@ function DocumentViewer({ documentUrl, filename, backHref }: { documentUrl: stri
                   setNumPages(numPages);
                 }}
                 loading={
-                  <div className="flex min-h-[500px] items-center justify-center text-slate-500">
-                    Loading secure document...
-                  </div>
+                  <div className="flex min-h-[500px] items-center justify-center text-slate-500">{ui("Loading secure document...")}</div>
                 }
                 error={
-                  <div className="flex min-h-[500px] items-center justify-center p-10 text-center text-slate-500">
-                    Unable to display this document.
-                  </div>
+                  <div className="flex min-h-[500px] items-center justify-center p-10 text-center text-slate-500">{ui("Unable to display this document.")}</div>
                 }
               >
                 {numPages &&

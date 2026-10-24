@@ -1,8 +1,10 @@
 'use client';
+import { useLanguage } from "@/components/LanguageProvider";
 import { useEffect, useRef, useState } from 'react';
 type Asset = { id: string; kind: 'voice' | 'video' | 'photo' | 'document' };
 type Message = { id: string; assets: Asset[] };
 function Letter({ id }: { id: string }) {
+  const { message: ui } = useLanguage();
   const [text, setText] = useState<string | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
@@ -21,10 +23,11 @@ function Letter({ id }: { id: string }) {
     }).catch(() => { if (!controller.signal.aborted) setError(true); });
     return () => controller.abort();
   }, [id]);
-  if (error) return <p role="alert">This letter could not be opened. Please reopen your email link and try again.</p>;
-  return <p className="whitespace-pre-wrap leading-8 text-slate-700">{text === null ? 'Opening letter…' : text}</p>;
+  if (error) return <p role="alert">{ui("This letter could not be opened. Please reopen your email link and try again.")}</p>;
+  return <p className="whitespace-pre-wrap leading-8 text-slate-700">{text === null ? ui("Opening letter…") : text}</p>;
 }
 export default function RecipientCollection() {
+  const { message: ui } = useLanguage();
   const [messages, setMessages] = useState<Message[] | null>(null);
   const [error, setError] = useState('');
   const tokenRef = useRef<string | null>(null);
@@ -51,20 +54,20 @@ export default function RecipientCollection() {
   }, []);
   return <main className="mx-auto w-full max-w-3xl px-5 py-12 sm:py-20">
     <p className="text-sm tracking-widest text-slate-500">ETERPAX</p>
-    <h1 className="mt-4 text-3xl font-semibold text-slate-900">Messages entrusted to you</h1>
-    <p className="mt-4 text-slate-600">Take your time. Your letters and memories are gathered here in a private collection. Keep your email link private.</p>
-    {error ? <p role="alert" className="mt-8 rounded-xl bg-white p-6">{error}</p> : !messages ? <p role="status" className="mt-8">Opening your collection…</p> :
+    <h1 className="mt-4 text-3xl font-semibold text-slate-900">{ui("Messages entrusted to you")}</h1>
+    <p className="mt-4 text-slate-600">{ui("Take your time. Your letters and memories are gathered here in a private collection. Keep your email link private.")}</p>
+    {error ? <p role="alert" className="mt-8 rounded-xl bg-white p-6">{ui(error)}</p> : !messages ? <p role="status" className="mt-8">{ui("Opening your collection…")}</p> :
       <div className="mt-8 space-y-6">{messages.map((message, index) => <section key={message.id} className="rounded-2xl bg-white p-6 shadow-sm sm:p-8">
-        <h2 className="mb-5 text-xl font-medium">Message {index + 1}</h2>
+        <h2 className="mb-5 text-xl font-medium">{ui("Message")} {index + 1}</h2>
         <Letter id={message.id} />
         <div className="mt-5 space-y-5">{message.assets.map((asset, assetIndex) => {
           const url = `/api/recipient/content?item=${message.id}&asset=${asset.id}`;
-          const label = `${asset.kind === 'voice' ? 'Voice recording' : asset.kind.charAt(0).toUpperCase() + asset.kind.slice(1)} ${assetIndex + 1}`;
+          const label = `${ui(asset.kind === 'voice' ? 'Voice recording' : asset.kind.charAt(0).toUpperCase() + asset.kind.slice(1))} ${assetIndex + 1}`;
           return <div key={asset.id}><p className="mb-2 text-sm text-slate-600">{label}</p>
-            {asset.kind !== 'document' && <a href={url} download className="mb-3 inline-block text-sm underline">Download {label.toLowerCase()}</a>}
-            {failed[asset.id] && <p role="alert" className="mb-3 text-sm">Preview unavailable. Try downloading the file, or reopen your email link if access has expired.</p>}
-            {asset.kind === 'document' ? <a href={url} download className="inline-block rounded-lg bg-slate-900 px-4 py-3 text-white">Download document</a> :
-              !opened[asset.id] ? <button className="rounded-lg border border-slate-300 px-4 py-3" onClick={() => setOpened(current => ({ ...current, [asset.id]: true }))}>Open {label.toLowerCase()}</button> :
+            {asset.kind !== 'document' && <a href={url} download className="mb-3 inline-block text-sm underline">{ui("Download")} {label.toLowerCase()}</a>}
+            {failed[asset.id] && <p role="alert" className="mb-3 text-sm">{ui("Preview unavailable. Try downloading the file, or reopen your email link if access has expired.")}</p>}
+            {asset.kind === 'document' ? <a href={url} download className="inline-block rounded-lg bg-slate-900 px-4 py-3 text-white">{ui("Download document")}</a> :
+              !opened[asset.id] ? <button className="rounded-lg border border-slate-300 px-4 py-3" onClick={() => setOpened(current => ({ ...current, [asset.id]: true }))}>{ui("Open")} {label.toLowerCase()}</button> :
                 asset.kind === 'voice' ? <audio src={url} aria-label={label} onError={() => setFailed(current => ({ ...current, [asset.id]: true }))} controls preload="none" className="w-full" /> :
                   asset.kind === 'video' ? <video src={url} aria-label={label} onError={() => setFailed(current => ({ ...current, [asset.id]: true }))} controls preload="metadata" playsInline className="w-full rounded-lg" /> :
                     // Authenticated same-origin image; Next optimization must not proxy/cache it.
@@ -73,6 +76,6 @@ export default function RecipientCollection() {
           </div>;
         })}</div>
       </section>)}</div>}
-    <p className="mt-10 text-sm text-slate-500">Access expires 30 days after your notification is prepared. Download the memories you wish to keep.</p>
+    <p className="mt-10 text-sm text-slate-500">{ui("Access expires 30 days after your notification is prepared. Download the memories you wish to keep.")}</p>
   </main>;
 }

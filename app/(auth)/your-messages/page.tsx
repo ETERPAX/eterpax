@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 import EterpaxLetterEditor from "@/components/EterpaxLetterEditor.tsx/EterpaxLetterEditor";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
@@ -43,6 +44,7 @@ type RecordedVideo = {
 };
 
 function YourMessagesContent() {
+  const { message: ui, format } = useLanguage();
   const searchParams = useSearchParams();
   const messageId = searchParams.get("message");
   const isNewMessage =
@@ -336,12 +338,12 @@ const [letterSaved, setLetterSaved] = useState(false);
         (file.type === "" && /\.(mp4|webm)$/i.test(file.name));
 
       if (!isSupported || /\.mov$/i.test(file.name)) {
-        alert("Please choose an MP4 or WebM video.");
+        alert(ui("Please choose an MP4 or WebM video."));
         return;
       }
 
       if (file.size === 0) {
-        alert("Please choose a non-empty video file.");
+        alert(ui("Please choose a non-empty video file."));
         return;
       }
 
@@ -357,13 +359,13 @@ const [letterSaved, setLetterSaved] = useState(false);
       } = await supabase.auth.getUser();
 
       if (userError || !user) {
-        alert("There is no authenticated user.");
+        alert(ui("There is no authenticated user."));
         return;
       }
 
       const { data: { session: encryptionSession }, error: encryptionSessionError } = await supabase.auth.getSession();
       if (encryptionSessionError || !encryptionSession?.access_token) {
-        alert("Please sign in again to encrypt your attachment.");
+        alert(ui("Please sign in again to encrypt your attachment."));
         return;
       }
 
@@ -447,7 +449,7 @@ const [letterSaved, setLetterSaved] = useState(false);
         }
       }
       console.error("VIDEO FILE UPLOAD ERROR:", error);
-      alert(error instanceof Error ? error.message : "Unable to upload the video.");
+      alert(ui(error instanceof Error ? error.message : "Unable to upload the video."));
     } finally {
       input.value = "";
     }
@@ -583,7 +585,7 @@ const [letterSaved, setLetterSaved] = useState(false);
           !navigator.mediaDevices ||
           !navigator.mediaDevices.getUserMedia
         ) {
-          alert("Your browser does not support camera access.");
+          alert(ui("Your browser does not support camera access."));
           return null;
         }
     
@@ -603,7 +605,7 @@ const [letterSaved, setLetterSaved] = useState(false);
         return stream;
       } catch (error) {
         console.error("CAMERA: ERROR AL ACCEDER A LA CAMARA", error);
-        alert("Unable to access the camera.");
+        alert(ui("Unable to access the camera."));
         return null;
       }
     };
@@ -654,11 +656,11 @@ cameraStreamRef.current = stream;
       );
 
       alert(
-        `CAMERA ERROR: ${
+        format("CAMERA ERROR: {detail}", { detail:
           error instanceof DOMException
             ? `${error.name}: ${error.message}`
             : String(error)
-        }`
+        })
       );
     }
   };
@@ -744,7 +746,7 @@ cameraStreamRef.current = stream;
   
     if (!stream) {
       console.error("VIDEO: NO HAY STREAM DESPUES DE INICIAR CAMARA");
-      alert("The camera is not ready yet. Please wait a moment.");
+      alert(ui("The camera is not ready yet. Please wait a moment."));
       return;
     }
   
@@ -754,7 +756,7 @@ cameraStreamRef.current = stream;
   
     if (activeVideoTracks.length === 0) {
       console.error("VIDEO: NO HAY VIDEO TRACK ACTIVO");
-      alert("The camera is not ready yet. Please wait a moment.");
+      alert(ui("The camera is not ready yet. Please wait a moment."));
       return;
     }
   
@@ -802,7 +804,7 @@ cameraStreamRef.current = stream;
               "VIDEO: ERROR REMOVING PREVIOUS RECORDING:",
               removePreviousVideoError
             );
-            alert(removePreviousVideoError.message);
+            alert(ui(removePreviousVideoError.message));
             return;
           }
         }
@@ -813,7 +815,7 @@ console.log("VIDEO: ENCRIPTANDO:", filePath);
 
 const { data: { session: encryptionSession }, error: encryptionSessionError } = await supabase.auth.getSession();
 if (encryptionSessionError || !encryptionSession?.access_token) {
-  alert("Please sign in again to encrypt your attachment.");
+  alert(ui("Please sign in again to encrypt your attachment."));
   return;
 }
 
@@ -828,7 +830,7 @@ const encryptionResponse = await fetch("/api/encrypt-file", {
 
 if (!encryptionResponse.ok) {
   console.error("VIDEO ENCRYPTION ERROR");
-  alert("Unable to encrypt the video.");
+  alert(ui("Unable to encrypt the video."));
   return;
 }
 
@@ -842,7 +844,7 @@ const videoEncryptionVersion =
 
 if (!videoIv || !videoEncryptedKey || !videoEncryptionVersion) {
   console.error("VIDEO ENCRYPTION METADATA MISSING");
-  alert("Unable to prepare the encrypted video.");
+  alert(ui("Unable to prepare the encrypted video."));
   return;
 }
 
@@ -861,7 +863,7 @@ const { error: uploadError, path: registeredPath } = await trackedStorage("messa
   
         if (uploadError) {
           console.error("VIDEO UPLOAD ERROR:", uploadError);
-          alert("Unable to upload the video.");
+          alert(ui("Unable to upload the video."));
           return;
         }
   
@@ -909,7 +911,7 @@ const { error: uploadError, path: registeredPath } = await trackedStorage("messa
         !navigator.mediaDevices.getUserMedia
       ) {
         alert(
-          "Your browser does not support camera access."
+          ui("Your browser does not support camera access.")
         );
 
         return;
@@ -958,7 +960,7 @@ if (!stream) {
       );
 
       alert(
-        "ETERPAX could not access your camera. Please check your browser permissions."
+        ui("ETERPAX could not access your camera. Please check your browser permissions.")
       );
     }
   };
@@ -1022,7 +1024,7 @@ if (!stream) {
       );
 
       alert(
-        "The camera is still loading. Please wait a moment."
+        ui("The camera is still loading. Please wait a moment.")
       );
 
       return;
@@ -1307,7 +1309,7 @@ if (!stream) {
         );
 
         alert(
-          "ETERPAX could not access your microphone."
+          ui("ETERPAX could not access your microphone.")
         );
       }
     };
@@ -1394,12 +1396,12 @@ if (!stream) {
   const saveMessage =
     async () => {
       if (!editReady(searchParams.get("message"), loadedMessageId, loadingMessages, loadError)) {
-        alert("Wait until the saved message has loaded completely before saving.");
+        alert(ui("Wait until the saved message has loaded completely before saving."));
         return;
       }
       if (!recipient.trim()) {
         alert(
-          "Please enter the recipient's name."
+          ui("Please enter the recipient's name.")
         );
 
         return;
@@ -1407,7 +1409,7 @@ if (!stream) {
 
       if (!recipientEmail.trim()) {
         alert(
-          "Please enter the recipient's email."
+          ui("Please enter the recipient's email.")
         );
 
         return;
@@ -1421,14 +1423,14 @@ if (!stream) {
 
       if (userError || !user) {
         alert(
-          "There is no authenticated user."
+          ui("There is no authenticated user.")
         );
 
         return;
       }
       let messageId: string | null = searchParams.get("message");
       try { if (await messageCoordinationEnabled(supabase)) messageId = await ensureDraftMessage(); }
-      catch (error) { alert(error instanceof Error ? error.message : "Unable to prepare message."); return; }
+      catch (error) { alert(ui(error instanceof Error ? error.message : "Unable to prepare message.")); return; }
       let encryptionData: {
         ciphertext: string | null;
         iv: string | null;
@@ -1482,7 +1484,7 @@ if (documentFiles.length > 0) {
     const documentMimeType = file.type || "application/octet-stream";
     const { data: { session: encryptionSession }, error: encryptionSessionError } = await supabase.auth.getSession();
     if (encryptionSessionError || !encryptionSession?.access_token) {
-      alert("Please sign in again to encrypt your attachment.");
+      alert(ui("Please sign in again to encrypt your attachment."));
       return;
     }
 
@@ -1493,7 +1495,7 @@ if (documentFiles.length > 0) {
     });
 
     if (!encryptionResponse.ok) {
-      alert("Unable to encrypt the document.");
+      alert(ui("Unable to encrypt the document."));
       return;
     }
 
@@ -1502,7 +1504,7 @@ if (documentFiles.length > 0) {
     const documentEncryptionVersion = encryptionResponse.headers.get("X-Encryption-Version");
 
     if (!documentIv || !documentEncryptedKey || !documentEncryptionVersion) {
-      alert("Unable to prepare the encrypted document.");
+      alert(ui("Unable to prepare the encrypted document."));
       return;
     }
 
@@ -1528,7 +1530,7 @@ if (documentFiles.length > 0) {
       );
 
       alert(
-        "Unable to upload document."
+        ui("Unable to upload document.")
       );
 
       return;
@@ -1561,7 +1563,7 @@ if (documentFiles.length > 0) {
 
 const { data: { session: encryptionSession }, error: encryptionSessionError } = await supabase.auth.getSession();
 if (encryptionSessionError || !encryptionSession?.access_token) {
-  alert("Please sign in again to encrypt your attachment.");
+  alert(ui("Please sign in again to encrypt your attachment."));
   return;
 }
 
@@ -1603,7 +1605,7 @@ voiceEncryptionVersion = "v1";
           );
 
           alert(
-            "Unable to upload voice message."
+            ui("Unable to upload voice message.")
           );
 
           return;
@@ -1650,7 +1652,7 @@ body_encryption_version: message.trim() ? "v1" : null,
           .eq("user_id", user.id);
 
         if (error) {
-          alert("Unable to save the message. Existing attachments have been retained.");
+          alert(ui("Unable to save the message. Existing attachments have been retained."));
           return;
         }
 
@@ -1702,7 +1704,7 @@ voice_encryption_version: voiceEncryptionVersion,
           );
 
           alert(
-            error.message
+            ui(error.message)
           );
 
           return;
@@ -1729,7 +1731,7 @@ if (deleteDocumentStorageError) {
     deleteDocumentStorageError
   );
 
-  alert(deleteDocumentStorageError.message);
+  alert(ui(deleteDocumentStorageError.message));
 
   return;
 }
@@ -1746,7 +1748,7 @@ if (deleteDocumentStorageError) {
       );
   
       alert(
-        `Unable to delete document references.\n\nMessage: ${deleteDocumentReferenceError.message}`
+        format("Unable to delete document references.\n\nMessage: {detail}", { detail: deleteDocumentReferenceError.message })
       );
   
       return;
@@ -1781,11 +1783,10 @@ if (deleteDocumentStorageError) {
     );
 
     alert(
-      `Document reference error:\n\n` +
-      `Message: ${documentReferenceError.message}\n` +
-      `Code: ${documentReferenceError.code}\n` +
-      `Details: ${documentReferenceError.details}\n` +
-      `Hint: ${documentReferenceError.hint}`
+      format("Document reference error:\n\nMessage: {message}\nCode: {code}\nDetails: {details}\nHint: {hint}", {
+        message: String(documentReferenceError.message), code: String(documentReferenceError.code),
+        details: String(documentReferenceError.details), hint: String(documentReferenceError.hint),
+      })
     );
 
     return;
@@ -1808,7 +1809,7 @@ if (loadVideosError) {
     loadVideosError
   );
 
-  alert(loadVideosError.message);
+  alert(ui(loadVideosError.message));
   return;
 }
 
@@ -1824,7 +1825,7 @@ const existingVideoPaths =
         deleteStorageError
       );
   
-      alert(deleteStorageError.message);
+      alert(ui(deleteStorageError.message));
       return;
     }
   }
@@ -1839,7 +1840,7 @@ if (deleteVideoError) {
     deleteVideoError
   );
 
-  alert(deleteVideoError.message);
+  alert(ui(deleteVideoError.message));
   return;
 }
 if (recordedVideo) {
@@ -1862,7 +1863,7 @@ if (recordedVideo) {
     );
 
     alert(
-      error.message
+      ui(error.message)
     );
 
     return;
@@ -1923,7 +1924,7 @@ if (recordedVideo) {
           const photoMimeType = file.type || "image/jpeg";
           const { data: { session: encryptionSession }, error: encryptionSessionError } = await supabase.auth.getSession();
           if (encryptionSessionError || !encryptionSession?.access_token) {
-            alert("Please sign in again to encrypt your attachment.");
+            alert(ui("Please sign in again to encrypt your attachment."));
             return;
           }
 
@@ -1934,7 +1935,7 @@ if (recordedVideo) {
           });
 
           if (!encryptionResponse.ok) {
-            alert("Unable to encrypt the photo.");
+            alert(ui("Unable to encrypt the photo."));
             return;
           }
 
@@ -1943,7 +1944,7 @@ if (recordedVideo) {
           const photoEncryptionVersion = encryptionResponse.headers.get("X-Encryption-Version");
 
           if (!photoIv || !photoEncryptedKey || !photoEncryptionVersion) {
-            alert("Unable to prepare the encrypted photo.");
+            alert(ui("Unable to prepare the encrypted photo."));
             return;
           }
 
@@ -1969,7 +1970,7 @@ if (recordedVideo) {
             );
 
             alert(
-              error.message
+              ui(error.message)
             );
 
             return;
@@ -2008,7 +2009,7 @@ if (recordedVideo) {
             );
 
             alert(
-              error.message
+              ui(error.message)
             );
 
             return;
@@ -2033,10 +2034,10 @@ if (recordedVideo) {
   if (messageId && !editReady(messageId, loadedMessageId, loadingMessages, loadError)) {
     return <OnboardingFormLayout step={5} totalSteps={5}>
       <div role={loadError ? "alert" : "status"} className="rounded-xl border p-6">
-        <p>{loadError || "Loading your saved message..."}</p>
-        {loadError && <button type="button" onClick={() => setLoadRetry(value => value + 1)} className="mt-4 underline">Retry loading message</button>}
-        <Link href={`/review?message=${encodeURIComponent(messageId)}`} className="ml-4 underline">Preview available content</Link>
-        <Link href="/your-messages" className="ml-4 underline">Back to Your Messages</Link>
+        <p>{loadError ? ui(loadError) : ui("Loading your saved message...")}</p>
+        {loadError && <button type="button" onClick={() => setLoadRetry(value => value + 1)} className="mt-4 underline">{ui("Retry loading message")}</button>}
+        <Link href={`/review?message=${encodeURIComponent(messageId)}`} className="ml-4 underline">{ui("Preview available content")}</Link>
+        <Link href="/your-messages" className="ml-4 underline">{ui("Back to Your Messages")}</Link>
       </div>
     </OnboardingFormLayout>;
   }
@@ -2053,9 +2054,7 @@ if (recordedVideo) {
           <Link
             href="/dashboard"
             className="inline-flex items-center text-sm font-medium text-neutral-500 transition hover:text-[#0A7BA8]"
-          >
-            ← Back to Dashboard
-          </Link>
+          >{ui("← Back to Dashboard")}</Link>
   
           {/* HEADER */}
           <div className="space-y-3 text-center">
@@ -2063,46 +2062,34 @@ if (recordedVideo) {
               <MessageCircle className="h-6 w-6 text-[#0F5C88]" />
             </div>
   
-            <h1 className="text-5xl font-light tracking-tight text-[#0D2340]">
-              Your Messages
-            </h1>
+            <h1 className="text-5xl font-light tracking-tight text-[#0D2340]">{ui("Your Messages")}</h1>
   
-            <p className="mx-auto max-w-lg text-lg leading-8 text-neutral-600">
-              Your saved messages, ready whenever you need them.
-            </p>
+            <p className="mx-auto max-w-lg text-lg leading-8 text-neutral-600">{ui("Your saved messages, ready whenever you need them.")}</p>
           </div>
   
           {/* MESSAGE LIST */}
-          {deletion.notice && <p role="status" className="rounded-xl border p-4">{deletion.notice}</p>}
+          {deletion.notice && <p role="status" className="rounded-xl border p-4">{ui(deletion.notice)}</p>}
           {deletion.enabled && deletion.pending.map(id => (
             <div key={id} className="rounded-xl border p-4">
-              <p>Message deletion pending. Files are being checked and cleaned safely.</p>
+              <p>{ui("Message deletion pending. Files are being checked and cleaned safely.")}</p>
               <button type="button" disabled={deletion.busy !== null} onClick={() => void deletion.run(id, "check")}
-                className="mt-2 underline disabled:opacity-50">Check deletion status</button>
+                className="mt-2 underline disabled:opacity-50">{ui("Check deletion status")}</button>
             </div>
           ))}
           {loadingMessages ? (
             <div className="rounded-3xl bg-white p-8 text-center shadow-sm">
-              <p className="text-sm text-neutral-500">
-                Loading your messages...
-              </p>
+              <p className="text-sm text-neutral-500">{ui("Loading your messages...")}</p>
             </div>
           ) : savedMessages.length === 0 ? (
             <div className="rounded-3xl border border-neutral-200 bg-white p-8 text-center shadow-sm">
-              <h2 className="text-2xl font-light text-[#0D2340]">
-                You haven&apos;t created a message yet.
-              </h2>
+              <h2 className="text-2xl font-light text-[#0D2340]">{ui("You haven't created a message yet.")}</h2>
   
-              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-neutral-500">
-                Create your first message and choose what you want to preserve.
-              </p>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-neutral-500">{ui("Create your first message and choose what you want to preserve.")}</p>
   
               <Link
                 href="/your-messages?new=true"
                 className="mt-6 inline-flex items-center rounded-full bg-[#0A7BA8] px-8 py-4 font-medium text-white transition hover:bg-[#08698F]"
-              >
-                + New Message
-              </Link>
+              >{ui("+ New Message")}</Link>
             </div>
           ) : (
             <div className="space-y-4">
@@ -2114,12 +2101,10 @@ if (recordedVideo) {
                   <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
   
                     <div>
-                      <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#0A7BA8]">
-                        Message {index + 1}
+                      <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#0A7BA8]">{ui("Message")} {index + 1}
                       </p>
   
-                      <h2 className="mt-2 text-2xl font-light text-[#0D2340]">
-                        For {savedMessage.recipient_name}
+                      <h2 className="mt-2 text-2xl font-light text-[#0D2340]">{ui("For")} {savedMessage.recipient_name}
                       </h2>
   
                       <p className="mt-1 text-sm text-neutral-500">
@@ -2137,21 +2122,15 @@ if (recordedVideo) {
                       <Link
                         href={`/review?message=${savedMessage.id}`}
                         className="inline-flex items-center rounded-full border border-[#0A7BA8] px-6 py-3 text-sm font-medium text-[#0A7BA8] transition hover:bg-[#0A7BA8]/5"
-                      >
-                        Preview
-                      </Link>
+                      >{ui("Preview")}</Link>
   
                       <Link
                         href={`/your-messages?message=${savedMessage.id}`}
                         className="inline-flex items-center rounded-full bg-[#0A7BA8] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#08698F]"
-                      >
-                        Edit
-                      </Link>
+                      >{ui("Edit")}</Link>
                       {deletion.enabled && <button type="button" disabled={deletion.busy !== null}
                         onClick={() => void deletion.run(savedMessage.id, "delete", savedMessage.recipient_name)}
-                        className="rounded-full border border-red-700 px-6 py-3 text-sm text-red-700 disabled:opacity-50">
-                        Delete Message
-                      </button>}
+                        className="rounded-full border border-red-700 px-6 py-3 text-sm text-red-700 disabled:opacity-50">{ui("Delete Message")}</button>}
                     </div>
   
                   </div>
@@ -2163,9 +2142,7 @@ if (recordedVideo) {
                 <Link
                   href="/your-messages?new=true"
                   className="inline-flex items-center rounded-full bg-[#0A7BA8] px-8 py-4 font-medium text-white transition hover:bg-[#08698F]"
-                >
-                  + New Message
-                </Link>
+                >{ui("+ New Message")}</Link>
               </div>
             </div>
           )}
@@ -2186,9 +2163,7 @@ if (recordedVideo) {
         <Link
           href="/dashboard"
           className="inline-flex items-center text-sm font-medium text-neutral-500 transition hover:text-[#0A7BA8]"
-        >
-          ← Back to Dashboard
-        </Link>
+        >{ui("← Back to Dashboard")}</Link>
 
         {/* HEADER */}
 
@@ -2198,27 +2173,20 @@ if (recordedVideo) {
             <MessageCircle className="h-6 w-6 text-[#0F5C88]" />
           </div>
 
-          <h1 className="text-5xl font-light tracking-tight text-[#0D2340]">
-            Create a Message
-          </h1>
+          <h1 className="text-5xl font-light tracking-tight text-[#0D2340]">{ui("Create a Message")}</h1>
 
-          <p className="mx-auto max-w-lg text-lg leading-8 text-neutral-600">
-            Create something meaningful
-            for someone you love.
-          </p>
+          <p className="mx-auto max-w-lg text-lg leading-8 text-neutral-600">{ui("Create something meaningful for someone you love.")}</p>
 
         </div>
 
         {/* RECIPIENT */}
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-white">
-            Who is this message for?
-          </label>
+          <label className="mb-2 block text-sm font-medium text-white">{ui("Who is this message for?")}</label>
 
           <input
             type="text"
-            placeholder="Full name"
+            placeholder={ui("Full name")}
             value={recipient}
             onChange={(e) =>
               setRecipient(
@@ -2232,11 +2200,7 @@ if (recordedVideo) {
         {/* INFO */}
 
         <div className="rounded-2xl border border-[#0A7BA8]/20 bg-[#0A7BA8]/5 p-5">
-          <p className="text-sm leading-6 text-[#17375E]">
-            Your message remains private
-            and protected until the
-            conditions you choose are met.
-          </p>
+          <p className="text-sm leading-6 text-[#17375E]">{ui("Your message remains private and protected until the conditions you choose are met.")}</p>
         </div>
 
         {/* CONTINUE */}
@@ -2247,7 +2211,7 @@ if (recordedVideo) {
             onClick={() => {
               if (!recipient.trim()) {
                 alert(
-                  "Please enter the recipient's name."
+                  ui("Please enter the recipient's name.")
                 );
                 return;
               }
@@ -2257,9 +2221,7 @@ if (recordedVideo) {
               );
             }}
             className="inline-flex items-center rounded-full bg-[#0A7BA8] px-10 py-4 font-medium text-white transition hover:bg-[#08698F]"
-          >
-            Continue →
-          </button>
+          >{ui("Continue →")}</button>
         </div>
 
       </div>
@@ -2285,13 +2247,9 @@ if (recordedVideo) {
             <div className="flex items-start justify-between">
 
               <div>
-                <p className="text-xs font-medium tracking-[0.25em] text-white">
-                  CREATE A MESSAGE
-                </p>
+                <p className="text-xs font-medium tracking-[0.25em] text-white">{ui("CREATE A MESSAGE")}</p>
 
-                <h2 className="mt-2 text-3xl font-light tracking-tight text-white">
-                  Create something meaningful.
-                </h2>
+                <h2 className="mt-2 text-3xl font-light tracking-tight text-white">{ui("Create something meaningful.")}</h2>
 
                 
               </div>
@@ -2304,18 +2262,14 @@ if (recordedVideo) {
                   )
                 }
                 className="text-sm font-medium text-white/70 hover:text-white"
-              >
-                Cancel
-              </button>
+              >{ui("Cancel")}</button>
 
             </div>
 
             {/* EMAIL */}
 
             <div className="mt-6">
-              <label className="mb-2 block text-sm font-medium text-white/70">
-                Email address
-              </label>
+              <label className="mb-2 block text-sm font-medium text-white/70">{ui("Email address")}</label>
 
               <input
                 type="email"
@@ -2334,15 +2288,9 @@ if (recordedVideo) {
 
             <div className="mt-8">
 
-              <p className="text-sm font-medium text-white/70">
-                What would you like
-                to leave?
-              </p>
+              <p className="text-sm font-medium text-white/70">{ui("What would you like to leave?")}</p>
 
-              <p className="mt-1 text-sm text-white/70">
-                Choose one or more ways
-                to make this message personal.
-              </p>
+              <p className="mt-1 text-sm text-white/70">{ui("Choose one or more ways to make this message personal.")}</p>
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
 
@@ -2359,18 +2307,12 @@ if (recordedVideo) {
   💌
 </div>
 
-                  <p className="mt-3 font-medium text-[#0F2747]">
-                    Letter
-                  </p>
+                  <p className="mt-3 font-medium text-[#0F2747]">{ui("Letter")}</p>
 
-                  <p className="mt-1 text-sm text-neutral-500">
-  Words that should remain.
-</p>
+                  <p className="mt-1 text-sm text-neutral-500">{ui("Words that should remain.")}</p>
 
 {letterSaved && (
-  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0A7BA8]/10 px-3 py-1.5 text-xs font-medium text-[#0A7BA8]">
-    ✉ Letter · 1
-  </div>
+  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0A7BA8]/10 px-3 py-1.5 text-xs font-medium text-[#0A7BA8]">{ui("✉ Letter · 1")}</div>
 )}
                 </button>
 
@@ -2387,17 +2329,11 @@ if (recordedVideo) {
                     🎥
                   </div>
 
-                  <p className="mt-3 font-medium text-[#0D2340]">
-                    Video
-                  </p>
+                  <p className="mt-3 font-medium text-[#0D2340]">{ui("Video")}</p>
 
-                  <p className="mt-1 text-sm text-neutral-500">
-                    Your presence. Your story.
-                  </p>
+                  <p className="mt-1 text-sm text-neutral-500">{ui("Your presence. Your story.")}</p>
                   {(recordedVideo || existingVideoUrl) && (
-  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0A7BA8]/10 px-3 py-1.5 text-xs font-medium text-[#0A7BA8]">
-    Video · 1
-  </div>
+  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0A7BA8]/10 px-3 py-1.5 text-xs font-medium text-[#0A7BA8]">{ui("Video · 1")}</div>
 )}
                 </button>
 
@@ -2414,17 +2350,11 @@ if (recordedVideo) {
                     🎙
                   </div>
 
-                  <p className="mt-3 font-medium text-[#0D2340]">
-                    Voice
-                  </p>
+                  <p className="mt-3 font-medium text-[#0D2340]">{ui("Voice")}</p>
 
-                  <p className="mt-1 text-sm text-neutral-500">
-                    Something they can hear whenever they need it.
-                  </p>
+                  <p className="mt-1 text-sm text-neutral-500">{ui("Something they can hear whenever they need it.")}</p>
                   {recordedVoice && (
-  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0A7BA8]/10 px-3 py-1.5 text-xs font-medium text-[#0A7BA8]">
-    Voice · 1
-  </div>
+  <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0A7BA8]/10 px-3 py-1.5 text-xs font-medium text-[#0A7BA8]">{ui("Voice · 1")}</div>
 )}
                 </button>
 
@@ -2443,16 +2373,11 @@ if (recordedVideo) {
                     📷
                   </div>
 
-                  <p className="mt-3 font-medium text-[#0D2340]">
-                    Photos
-                  </p>
+                  <p className="mt-3 font-medium text-[#0D2340]">{ui("Photos")}</p>
 
-                  <p className="mt-1 text-sm text-neutral-500">
-                    Moments worth keeping.
-                  </p>
+                  <p className="mt-1 text-sm text-neutral-500">{ui("Moments worth keeping.")}</p>
                   {(existingPhotoUrls.length > 0 || photoFiles.length > 0) && (
-  <span className="mt-2 inline-flex rounded-full bg-[#E8F6FB] px-2.5 py-1 text-xs font-medium text-[#0A7BA8]">
-   Photos · {existingPhotoUrls.length + photoFiles.length}
+  <span className="mt-2 inline-flex rounded-full bg-[#E8F6FB] px-2.5 py-1 text-xs font-medium text-[#0A7BA8]">{ui("Photos ·")} {existingPhotoUrls.length + photoFiles.length}
   </span>
 )}
                 </button>
@@ -2474,17 +2399,11 @@ if (recordedVideo) {
                     📄
                   </div>
 
-                  <p className="mt-3 font-medium text-[#0D2340]">
-                    Documents
-                  </p>
+                  <p className="mt-3 font-medium text-[#0D2340]">{ui("Documents")}</p>
 
-                  <p className="mt-1 text-sm text-neutral-500">
-                    Important documents worth keeping secure.
-                  </p>
+                  <p className="mt-1 text-sm text-neutral-500">{ui("Important documents worth keeping secure.")}</p>
                   {(documentFile || documentPath) && (
-  <span className="mt-2 inline-flex rounded-full bg-[#E8F7FC] px-2 py-1 text-xs font-medium text-[#0A7BA8]">
-    Document · 1
-  </span>
+  <span className="mt-2 inline-flex rounded-full bg-[#E8F7FC] px-2 py-1 text-xs font-medium text-[#0A7BA8]">{ui("Document · 1")}</span>
 )}
                 </button>
 
@@ -2497,9 +2416,7 @@ if (recordedVideo) {
 
             {(existingDocumentPaths.length > 0 || documentFiles.length > 0) && (
   <div className="mt-4 rounded-xl border border-[#0A7BA8]/20 bg-[#F8FCFE] px-4 py-3">
-    <p className="text-sm font-medium text-[#0D2340]">
-      Documents selected
-    </p>
+    <p className="text-sm font-medium text-[#0D2340]">{ui("Documents selected")}</p>
 
     <div className="mt-2 space-y-1">
     {existingDocumentPaths.map((path, index) => (
@@ -2529,7 +2446,7 @@ if (recordedVideo) {
         );
       }}
       className="text-sm font-medium text-neutral-400 hover:text-red-500"
-      aria-label="Remove document"
+      aria-label={ui("Remove document")}
     >
       ×
     </button>
@@ -2558,13 +2475,9 @@ if (recordedVideo) {
                 <div className="flex items-start justify-between">
 
                   <div>
-                    <h2 className="text-2xl font-semibold text-white">
-                      Create with ETERPAX
-                    </h2>
+                    <h2 className="text-2xl font-semibold text-white">{ui("Create with ETERPAX")}</h2>
 
-                    <p className="mt-2 text-white/70">
-                      Record a personal video message.
-                    </p>
+                    <p className="mt-2 text-white/70">{ui("Record a personal video message.")}</p>
                   </div>
 
                   <button
@@ -2612,8 +2525,8 @@ if (recordedVideo) {
                     />
 
                     {isRecording
-                      ? "Stop Recording"
-                      : "Start Recording"}
+                      ? ui("Stop Recording")
+                      : ui("Start Recording")}
 
                   </button>
 
@@ -2621,9 +2534,7 @@ if (recordedVideo) {
                 {existingVideoUrl && !recordedVideo && (
   <div className="mt-6">
   <div className="mb-2 flex items-center justify-between">
-    <p className="text-sm text-white/70">
-      Video already added
-    </p>
+    <p className="text-sm text-white/70">{ui("Video already added")}</p>
 
     <button
       type="button"
@@ -2632,9 +2543,7 @@ if (recordedVideo) {
         setRemovedExistingVideo(true);
       }}
       className="rounded-full bg-white/10 px-3 py-1 text-xs text-white hover:bg-white/20"
-    >
-      ✕ Remove
-    </button>
+    >{ui("✕ Remove")}</button>
   </div>
 
   <video
@@ -2657,9 +2566,7 @@ if (recordedVideo) {
   type="button"
   onClick={closeVideoRecorder}
   className="mt-6 w-full rounded-full bg-[#0A7BA8] px-6 py-3 font-medium text-white transition hover:bg-[#08698f]"
->
-  Done
-</button>
+>{ui("Done")}</button>
               </div>
             )}
 
@@ -2671,13 +2578,9 @@ if (recordedVideo) {
                 <div className="flex items-start justify-between">
 
                   <div>
-                    <h2 className="text-2xl font-semibold text-white">
-                      Create with ETERPAX
-                    </h2>
+                    <h2 className="text-2xl font-semibold text-white">{ui("Create with ETERPAX")}</h2>
 
-                    <p className="mt-2 text-white/70">
-                      Record a personal voice message.
-                    </p>
+                    <p className="mt-2 text-white/70">{ui("Record a personal voice message.")}</p>
                   </div>
 
                   <button
@@ -2698,9 +2601,7 @@ if (recordedVideo) {
                     🎙️
                   </div>
 
-                  <p className="mt-4 text-lg font-medium text-white">
-                    Your voice. Your presence. Your story.
-                  </p>
+                  <p className="mt-4 text-lg font-medium text-white">{ui("Your voice. Your presence. Your story.")}</p>
 
                   <button
                     type="button"
@@ -2719,8 +2620,8 @@ if (recordedVideo) {
                     />
 
                     {isVoiceRecording
-                      ? "Stop Recording"
-                      : "Start Recording"}
+                      ? ui("Stop Recording")
+                      : ui("Start Recording")}
 
                   </button>
 
@@ -2743,7 +2644,7 @@ if (recordedVideo) {
   setRemovedVoice(true);
 }}
       className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white hover:bg-black"
-      aria-label="Remove voice message"
+      aria-label={ui("Remove voice message")}
     >
       ×
     </button>
@@ -2755,9 +2656,7 @@ if (recordedVideo) {
   type="button"
   onClick={closeVoiceRecorder}
   className="mt-6 w-full rounded-full bg-[#0A7BA8] px-6 py-3 font-medium text-white transition hover:bg-[#08698f]"
->
-  Done
-</button>
+>{ui("Done")}</button>
 </div>
               </div>
             )}
@@ -2772,10 +2671,7 @@ if (recordedVideo) {
                   saveMessage
                 }
                 className="inline-flex items-center rounded-full bg-[#0A7BA8] px-8 py-4 font-medium text-white transition hover:bg-[#08698F]"
-              >
-                Save Recipient &
-                Continue →
-              </button>
+              >{ui("Save Recipient & Continue →")}</button>
 
             </div>
 
@@ -2801,24 +2697,18 @@ if (recordedVideo) {
       <div className="shrink-0 border-b border-[#E9E5DC] px-7 pb-6 pt-7 md:px-9">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-medium tracking-[0.28em] text-[#0A7BA8]">
-              ETERPAX · LETTER
-            </p>
+            <p className="text-xs font-medium tracking-[0.28em] text-[#0A7BA8]">{ui("ETERPAX · LETTER")}</p>
 
-            <h2 className="mt-2 text-4xl font-light tracking-tight text-[#0D2340]">
-              Write your letter.
-            </h2>
+            <h2 className="mt-2 text-4xl font-light tracking-tight text-[#0D2340]">{ui("Write your letter.")}</h2>
 
-            <p className="mt-2 text-lg font-semibold leading-7 text-[#17375E]">
-              There is no perfect way to say what matters. Just begin.
-            </p>
+            <p className="mt-2 text-lg font-semibold leading-7 text-[#17375E]">{ui("There is no perfect way to say what matters. Just begin.")}</p>
           </div>
 
           <button
             type="button"
             onClick={() => setShowLetterEditor(false)}
             className="ml-6 text-2xl font-light text-neutral-400 transition hover:text-[#0D2340]"
-            aria-label="Close letter editor"
+            aria-label={ui("Close letter editor")}
           >
             ×
           </button>
@@ -2843,9 +2733,7 @@ if (recordedVideo) {
               setShowLetterEditor(false);
             }}
             className="inline-flex items-center rounded-full bg-[#0A7BA8] px-8 py-4 font-medium text-white shadow-sm transition hover:bg-[#08698F]"
-          >
-            Done · Save Letter →
-          </button>
+          >{ui("Done · Save Letter →")}</button>
         </div>
       </div>
 
@@ -2872,7 +2760,7 @@ if (recordedVideo) {
             <button
               type="button"
               onClick={() => setShowVideoOptions(false)}
-              aria-label="Close Add Video"
+              aria-label={ui("Close Add Video")}
               className="absolute right-4 top-4 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white/10 text-2xl text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               <span aria-hidden="true">×</span>
@@ -2880,17 +2768,11 @@ if (recordedVideo) {
 
             <div className="mx-auto mb-6 h-1.5 w-16 rounded-full bg-neutral-300" />
 
-            <p className="text-xs font-medium tracking-[0.25em] text-[#7DD3FC]">
-              ETERPAX VIDEO
-            </p>
+            <p className="text-xs font-medium tracking-[0.25em] text-[#7DD3FC]">{ui("ETERPAX VIDEO")}</p>
 
-            <h2 className="mt-2 text-2xl font-semibold text-white">
-              Add Video
-            </h2>
+            <h2 className="mt-2 text-2xl font-semibold text-white">{ui("Add Video")}</h2>
 
-            <p className="mt-2 text-neutral-500">
-              How would you like to add your video?
-            </p>
+            <p className="mt-2 text-neutral-500">{ui("How would you like to add your video?")}</p>
 
             <div className="mt-8 space-y-3">
 
@@ -2910,13 +2792,9 @@ if (recordedVideo) {
                   </div>
 
                   <div>
-                    <p className="font-medium text-white">
-                      Record with ETERPAX
-                    </p>
+                    <p className="font-medium text-white">{ui("Record with ETERPAX")}</p>
 
-                    <p className="mt-1 text-sm text-white/60">
-                      Use your camera to record a personal video message.
-                    </p>
+                    <p className="mt-1 text-sm text-white/60">{ui("Use your camera to record a personal video message.")}</p>
                   </div>
 
                 </div>
@@ -2943,13 +2821,9 @@ if (recordedVideo) {
                   </div>
 
                   <div>
-                    <p className="font-medium text-white">
-                      Upload a video
-                    </p>
+                    <p className="font-medium text-white">{ui("Upload a video")}</p>
 
-                    <p className="mt-1 text-sm text-white/60">
-                      Select a video from your device.
-                    </p>
+                    <p className="mt-1 text-sm text-white/60">{ui("Select a video from your device.")}</p>
                   </div>
 
                 </div>
@@ -2987,7 +2861,7 @@ if (recordedVideo) {
             <button
               type="button"
               onClick={() => setShowPhotoOptions(false)}
-              aria-label="Close Add Photos"
+              aria-label={ui("Close Add Photos")}
               className="absolute right-4 top-4 flex h-10 w-10 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-white/10 text-2xl text-white transition hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               <span aria-hidden="true">×</span>
@@ -2995,22 +2869,14 @@ if (recordedVideo) {
 
             <div className="mx-auto mb-6 h-1.5 w-16 rounded-full bg-neutral-300" />
 
-            <p className="text-xs font-medium tracking-[0.25em] text-[#7DD3FC]">
-              ETERPAX PHOTOS
-            </p>
+            <p className="text-xs font-medium tracking-[0.25em] text-[#7DD3FC]">{ui("ETERPAX PHOTOS")}</p>
 
-            <h2 className="mt-2 text-2xl font-semibold text-white">
-              Add Photos
-            </h2>
+            <h2 className="mt-2 text-2xl font-semibold text-white">{ui("Add Photos")}</h2>
 
-            <p className="mt-2 text-neutral-500">
-              How would you like to add your photos?
-            </p>
+            <p className="mt-2 text-neutral-500">{ui("How would you like to add your photos?")}</p>
             {existingPhotoUrls.length > 0 && (
   <div className="mt-6">
-    <p className="mb-3 text-sm font-medium text-white">
-      Photos already added
-    </p>
+    <p className="mb-3 text-sm font-medium text-white">{ui("Photos already added")}</p>
 
     <div className="grid grid-cols-3 gap-3">
     {existingPhotoUrls.map((url, index) => (
@@ -3020,7 +2886,7 @@ if (recordedVideo) {
   >
     <img
       src={url}
-      alt={`Saved photo ${index + 1}`}
+      alt={format("Saved photo {number}", { number: index + 1 })}
       className="h-24 w-full object-cover"
     />
 
@@ -3042,7 +2908,7 @@ if (recordedVideo) {
         );
       }}
       className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/70 text-xs text-white hover:bg-black"
-      aria-label={`Remove saved photo ${index + 1}`}
+      aria-label={format("Remove saved photo {number}", { number: index + 1 })}
     >
       ×
     </button>
@@ -3074,13 +2940,9 @@ if (recordedVideo) {
                   </div>
 
                   <div>
-                    <p className="font-medium text-white">
-                      Take with ETERPAX
-                    </p>
+                    <p className="font-medium text-white">{ui("Take with ETERPAX")}</p>
 
-                    <p className="mt-1 text-sm text-white/60">
-                      Use your camera to take photos.
-                    </p>
+                    <p className="mt-1 text-sm text-white/60">{ui("Use your camera to take photos.")}</p>
                   </div>
 
                 </div>
@@ -3114,13 +2976,9 @@ if (recordedVideo) {
                   </div>
 
                   <div>
-                    <p className="font-medium text-white">
-                    Choose from your device
-                    </p>
+                    <p className="font-medium text-white">{ui("Choose from your device")}</p>
 
-                    <p className="mt-1 text-sm text-white/60">
-                    Select the photos you want to preserve.
-                    </p>
+                    <p className="mt-1 text-sm text-white/60">{ui("Select the photos you want to preserve.")}</p>
                   </div>
 
                 </div>
@@ -3147,21 +3005,15 @@ if (recordedVideo) {
 
       <div className="flex items-start justify-between p-6">
         <div>
-          <p className="text-xs font-medium tracking-[0.25em] text-white/70">
-            ETERPAX CAMERA
-          </p>
-          <h2 className="mt-1 text-xl font-medium text-white">
-            Take Photos
-          </h2>
+          <p className="text-xs font-medium tracking-[0.25em] text-white/70">{ui("ETERPAX CAMERA")}</p>
+          <h2 className="mt-1 text-xl font-medium text-white">{ui("Take Photos")}</h2>
         </div>
 
         <button
           type="button"
           onClick={finishPhotoCamera}
           className="rounded-full bg-black/40 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm"
-        >
-          Done
-        </button>
+        >{ui("Done")}</button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden bg-black">
@@ -3178,10 +3030,8 @@ if (recordedVideo) {
         <div className="flex flex-col items-center">
           <p className="mb-5 text-sm text-white/80">
             {photoFiles.length > 0
-              ? `${photoFiles.length} photo${
-                  photoFiles.length === 1 ? "" : "s"
-                } selected`
-              : "Take a photo with ETERPAX"}
+              ? format(photoFiles.length === 1 ? "{count} photo selected" : "{count} photos selected", { count: photoFiles.length })
+              : ui("Take a photo with ETERPAX")}
           </p>
 
           <button

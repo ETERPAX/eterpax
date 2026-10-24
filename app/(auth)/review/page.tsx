@@ -1,4 +1,5 @@
 "use client";
+import { useLanguage } from "@/components/LanguageProvider";
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -55,6 +56,7 @@ function hasLetter(body: string | null) {
 }
 
 function ReviewContent() {
+  const { message: ui, format } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
   const messageId = searchParams.get("message");
@@ -126,9 +128,7 @@ function ReviewContent() {
         </div>
 
         <div className="flex items-center gap-2 text-sm text-white/70">
-          <ShieldCheck className="h-4 w-4" />
-          Secure Preview
-        </div>
+          <ShieldCheck className="h-4 w-4" />{ui("Secure Preview")}</div>
       </header>
 
       {/* MAIN */}
@@ -138,53 +138,35 @@ function ReviewContent() {
             type="button"
             onClick={() => router.push("/dashboard")}
             className="inline-flex items-center text-sm font-medium text-white/80 transition hover:text-white"
-          >
-            ← Back to Dashboard
-          </button>
+          >{ui("← Back to Dashboard")}</button>
         </div>
 
         {/* INTRO */}
         <div className="mx-auto max-w-4xl text-center">
-          <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-[#2AA7D6]">
-            Your Continuity Plan
-          </p>
+          <p className="mb-4 text-sm font-medium uppercase tracking-[0.22em] text-[#2AA7D6]">{ui("Your Continuity Plan")}</p>
 
-          <h1 className="font-serif text-4xl font-light tracking-tight text-white md:text-5xl">
-            See what you&apos;ve chosen to preserve.
-          </h1>
+          <h1 className="font-serif text-4xl font-light tracking-tight text-white md:text-5xl">{ui("See what you've chosen to preserve.")}</h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/85">
-            Review your message and everything you&apos;ve
-            included, all in one place.
-          </p>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/85">{ui("Review your message and everything you've included, all in one place.")}</p>
         </div>
 
         {/* CONTENT */}
         <div className="mx-auto mt-12 max-w-4xl">
           {loadError && <div role="alert" className="mb-6 rounded-xl border border-white/30 p-4">
-            <p>{loadError}</p>
-            <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-2 underline">Retry loading message</button>
+            <p>{ui(loadError)}</p>
+            <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-2 underline">{ui("Retry loading message")}</button>
           </div>}
           {loading ? (
             <div className="py-16 text-center">
-              <p className="text-sm text-white/70">
-                Loading your message...
-              </p>
+              <p className="text-sm text-white/70">{ui("Loading your message...")}</p>
             </div>
           ) : loadError ? null : messages.length === 0 ? (
             <div className="rounded-3xl border border-white/20 bg-black/15 p-10 text-center backdrop-blur-md">
-              <p className="text-xs uppercase tracking-[0.2em] text-white/60">
-                No messages yet
-              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-white/60">{ui("No messages yet")}</p>
 
-              <h2 className="mt-4 font-serif text-3xl font-light text-white">
-                Your continuity collection is waiting.
-              </h2>
+              <h2 className="mt-4 font-serif text-3xl font-light text-white">{ui("Your continuity collection is waiting.")}</h2>
 
-              <p className="mt-4 text-base leading-7 text-white/70">
-                Create your first message and it will appear
-                here.
-              </p>
+              <p className="mt-4 text-base leading-7 text-white/70">{ui("Create your first message and it will appear here.")}</p>
             </div>
           ) : (
             <div className="space-y-10">
@@ -207,26 +189,24 @@ function ReviewContent() {
                 return (
                   <div key={message.id}>
                     {message.issues.length > 0 && <div role="alert" className="mb-6 rounded-xl border border-white/30 p-4">
-                      {message.issues.map((issue, index) => <p key={index}>{issue.asset}: {loadErrorText(issue.code)}</p>)}
-                      <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-2 underline">Retry unavailable content</button>
+                      {message.issues.map((issue, index) => <p key={index}>{ui(issue.asset)}: {ui(loadErrorText(issue.code))}</p>)}
+                      <button type="button" onClick={() => setRetry(value => value + 1)} className="mt-2 underline">{ui("Retry unavailable content")}</button>
                     </div>}
                     {/* MESSAGE IDENTITY */}
                     <div className="border-y border-white/30 py-6">
                       <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
                         <div>
-                          <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/65">
-                            Message {messages.length - index}
+                          <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/65">{ui("Message")} {messages.length - index}
                           </p>
 
-                          <p className="mt-3 text-xl font-medium text-white md:text-2xl">
-                            For{" "}
+                          <p className="mt-3 text-xl font-medium text-white md:text-2xl">{ui("For")}{" "}
                             {message.recipient_name ||
-                              "Someone special"}
+                              ui("Someone special")}
                           </p>
                         </div>
 
                         <div className="self-start rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs capitalize text-white/85 backdrop-blur-md sm:self-auto">
-                          {message.status || "draft"}
+                          {ui(message.status || "draft")}
                         </div>
                       </div>
                     </div>
@@ -246,9 +226,7 @@ function ReviewContent() {
                         >
                           <FileText className="h-7 w-7 text-[#54BCE5]" />
 
-                          <span className="mt-3 text-sm font-medium text-white">
-                            Letter
-                          </span>
+                          <span className="mt-3 text-sm font-medium text-white">{ui("Letter")}</span>
                         </button>
                       )}
 
@@ -265,15 +243,13 @@ function ReviewContent() {
                         >
                           <Video className="h-7 w-7 text-[#54BCE5]" />
 
-                          <span className="mt-3 text-sm font-medium text-white">
-                            Video
-                          </span>
+                          <span className="mt-3 text-sm font-medium text-white">{ui("Video")}</span>
 
                           <span className="mt-1 text-xs text-white/60">
                             {message.video_urls.length}{" "}
                             {message.video_urls.length === 1
-                              ? "video"
-                              : "videos"}
+                              ? ui("video")
+                              : ui("videos")}
                           </span>
                         </button>
                       )}
@@ -291,13 +267,9 @@ function ReviewContent() {
                         >
                           <Mic className="h-7 w-7 text-[#54BCE5]" />
 
-                          <span className="mt-3 text-sm font-medium text-white">
-                            Voice
-                          </span>
+                          <span className="mt-3 text-sm font-medium text-white">{ui("Voice")}</span>
 
-                          <span className="mt-1 text-xs text-white/60">
-                            1 recording
-                          </span>
+                          <span className="mt-1 text-xs text-white/60">{ui("1 recording")}</span>
                         </button>
                       )}
 
@@ -314,15 +286,13 @@ function ReviewContent() {
                         >
                           <Images className="h-7 w-7 text-[#54BCE5]" />
 
-                          <span className="mt-3 text-sm font-medium text-white">
-                            Photos
-                          </span>
+                          <span className="mt-3 text-sm font-medium text-white">{ui("Photos")}</span>
 
                           <span className="mt-1 text-xs text-white/60">
                             {message.photo_urls.length}{" "}
                             {message.photo_urls.length === 1
-                              ? "photo"
-                              : "photos"}
+                              ? ui("photo")
+                              : ui("photos")}
                           </span>
                         </button>
                       )}
@@ -340,19 +310,17 @@ function ReviewContent() {
                         >
                           <FileText className="h-7 w-7 text-[#54BCE5]" />
 
-                          <span className="mt-3 text-sm font-medium text-white">
-                            Documents
-                          </span>
+                          <span className="mt-3 text-sm font-medium text-white">{ui("Documents")}</span>
 
                           <span className="mt-1 text-xs text-white/60">
                             {message.documents.length > 0
                               ? `${message.documents.length} ${
                                   message.documents.length ===
                                   1
-                                    ? "document"
-                                    : "documents"
+                                    ? ui("document")
+                                    : ui("documents")
                                 }`
-                              : "1 document"}
+                              : ui("1 document")}
                           </span>
                         </button>
                       )}
@@ -360,9 +328,7 @@ function ReviewContent() {
 
                     {/* FOOTER ACTIONS */}
                     <div className="mt-10 flex flex-col justify-between gap-5 border-t border-white/25 pt-6 sm:flex-row sm:items-center">
-                      <p className="text-sm text-white/70">
-                        Your message remains private and secure.
-                      </p>
+                      <p className="text-sm text-white/70">{ui("Your message remains private and secure.")}</p>
 
                       <div className="flex flex-wrap gap-3">
                         <button
@@ -373,9 +339,7 @@ function ReviewContent() {
                             )
                           }
                           className="rounded-full border border-white/40 bg-black/10 px-6 py-3 text-sm font-medium text-white backdrop-blur-md transition hover:bg-white/15"
-                        >
-                          Edit Message
-                        </button>
+                        >{ui("Edit Message")}</button>
 
                         <button
                           type="button"
@@ -383,9 +347,7 @@ function ReviewContent() {
                             router.push("/dashboard")
                           }
                           className="rounded-full bg-[#0A7BA8] px-6 py-3 text-sm font-medium text-white shadow-lg transition hover:bg-[#08698F]"
-                        >
-                          Back to Dashboard
-                        </button>
+                        >{ui("Back to Dashboard")}</button>
                       </div>
                     </div>
                   </div>
@@ -396,9 +358,7 @@ function ReviewContent() {
         </div>
 
         {/* BRAND STATEMENT */}
-        <p className="mt-14 text-center text-xs uppercase tracking-[0.24em] text-white/55">
-          Your words. Your memories. Your way.
-        </p>
+        <p className="mt-14 text-center text-xs uppercase tracking-[0.24em] text-white/55">{ui("Your words. Your memories. Your way.")}</p>
       </section>
 
       {/* MODAL */}
@@ -415,20 +375,19 @@ function ReviewContent() {
               type="button"
               onClick={closeModal}
               className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-[#102A43]"
-              aria-label="Close preview"
+              aria-label={ui("Close preview")}
             >
               <X className="h-5 w-5" />
             </button>
 
             <div className="pr-14">
               <p className="text-xs font-medium uppercase tracking-[0.2em] text-[#0A7BA8]">
-                {previewModal.type}
+                {ui(previewModal.type)}
               </p>
 
-              <h2 className="mt-2 font-serif text-3xl font-light text-[#102A43]">
-                For{" "}
+              <h2 className="mt-2 font-serif text-3xl font-light text-[#102A43]">{ui("For")}{" "}
                 {previewModal.message.recipient_name ||
-                  "Someone special"}
+                  ui("Someone special")}
               </h2>
             </div>
 
@@ -468,15 +427,13 @@ function ReviewContent() {
               </div>
             )}
 
-            {playbackError && <p role="alert" className="mt-4 text-red-700">{playbackError}</p>}
+            {playbackError && <p role="alert" className="mt-4 text-red-700">{ui(playbackError)}</p>}
 
             {/* VOICE MODAL */}
             {previewModal.type === "voice" &&
               previewModal.message.voice_url && (
                 <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="mb-4 text-sm text-slate-500">
-                    Voice message
-                  </p>
+                  <p className="mb-4 text-sm text-slate-500">{ui("Voice message")}</p>
 
                   <audio
                     src={previewModal.message.voice_url}
@@ -496,7 +453,7 @@ function ReviewContent() {
                     <img
                       key={photoIndex}
                       src={photoUrl}
-                      alt={`Photo ${photoIndex + 1}`}
+                      alt={format("Photo {number}", { number: photoIndex + 1 })}
                       className="h-auto w-full rounded-2xl object-cover shadow-sm"
                     />
                   )
@@ -541,25 +498,19 @@ function ReviewContent() {
                                 ?.replace(
                                   /^\d+-\d+-/,
                                   ""
-                                ) || "Document"}
+                                ) || ui("Document")}
                             </p>
 
-                            <p className="mt-1 text-xs text-slate-500">
-                              Secure document
-                            </p>
+                            <p className="mt-1 text-xs text-slate-500">{ui("Secure document")}</p>
                           </div>
                         </div>
 
-                        <span className="ml-4 text-sm font-medium text-[#0A7BA8]">
-                          View →
-                        </span>
+                        <span className="ml-4 text-sm font-medium text-[#0A7BA8]">{ui("View →")}</span>
                       </button>
                     )
                   )
                 ) : (
-                  <p className="text-sm text-slate-500">
-                    No documents available.
-                  </p>
+                  <p className="text-sm text-slate-500">{ui("No documents available.")}</p>
                 )}
               </div>
             )}
@@ -569,9 +520,7 @@ function ReviewContent() {
                 type="button"
                 onClick={closeModal}
                 className="rounded-full bg-[#0A7BA8] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#08698F]"
-              >
-                Done
-              </button>
+              >{ui("Done")}</button>
             </div>
           </div>
         </div>
