@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/components/LanguageProvider";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -29,6 +30,7 @@ async function matchesRecoverySession(proof: RecoveryAuthorization): Promise<boo
 }
 
 export default function ResetPasswordPage() {
+  const { t, message } = useLanguage();
   const [status, setStatus] = useState<ResetStatus>("checking");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -225,18 +227,9 @@ export default function ResetPasswordPage() {
 
             <div className="flex flex-1 items-center px-8 pb-20 lg:px-14">
               <div className="max-w-2xl">
-                <p className="mb-6 text-sm font-medium uppercase tracking-[0.28em] text-white/75">
-                  Welcome back.
-                </p>
-                <h2 className="max-w-lg font-serif text-5xl leading-[0.98] tracking-tight text-white md:text-6xl lg:text-7xl">
-                  Your continuity
-                  <br />
-                  is waiting.
-                </h2>
-                <p className="mt-6 max-w-xl text-lg leading-8 text-white/85">
-                  Your messages, your wishes, and the things that matter to you
-                  are safely waiting for you.
-                </p>
+                <p className="mb-6 text-sm font-medium uppercase tracking-[0.28em] text-white/75">{t("Welcome back.")}</p>
+                <h2 className="max-w-lg font-serif text-5xl leading-[0.98] tracking-tight text-white md:text-6xl lg:text-7xl">{t("Your continuity")}<br />{t("is waiting.")}</h2>
+                <p className="mt-6 max-w-xl text-lg leading-8 text-white/85">{t("Your messages, your wishes, and the things that matter to you are safely waiting for you.")}</p>
               </div>
             </div>
           </div>
@@ -248,31 +241,23 @@ export default function ResetPasswordPage() {
               <Link href="/" className="text-sm font-semibold tracking-[0.28em] text-[#0F5C88]">
                 ETERPAX
               </Link>
-              <h1 className="mt-8 text-4xl font-light tracking-tight text-[#0D2340]">
-                Set a new password
-              </h1>
-              <p className="mt-3 text-base text-neutral-600">
-                Choose a new password with at least 8 characters.
-              </p>
+              <h1 className="mt-8 text-4xl font-light tracking-tight text-[#0D2340]">{t("Set a new password")}</h1>
+              <p className="mt-3 text-base text-neutral-600">{t("Choose a new password with at least 8 characters.")}</p>
             </div>
 
             {status === "checking" && (
-              <p role="status" className="text-sm text-neutral-600">Verifying your password reset session...</p>
+              <p role="status" className="text-sm text-neutral-600">{t("Verifying your password reset session...")}</p>
             )}
             {status === "invalid" && (
               <div className="space-y-4">
-                <p role="alert" className="text-sm text-neutral-600">
-                  This reset link is invalid or expired, or your session is no longer available. Please request a new link.
-                </p>
-                <Link href="/forgot-password" className="text-sm font-medium text-[#0F5C88] hover:underline">
-                  Request a new reset link
-                </Link>
+                <p role="alert" className="text-sm text-neutral-600">{t("This reset link is invalid or expired, or your session is no longer available. Please request a new link.")}</p>
+                <Link href="/forgot-password" className="text-sm font-medium text-[#0F5C88] hover:underline">{t("Request a new reset link")}</Link>
               </div>
             )}
             {status === "ready" && (
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                  <label htmlFor="new-password" className="mb-2 block text-sm font-medium text-[#0D2340]">New password</label>
+                  <label htmlFor="new-password" className="mb-2 block text-sm font-medium text-[#0D2340]">{t("New password")}</label>
                   <div className="relative">
                     <input
                       id="new-password"
@@ -288,7 +273,7 @@ export default function ResetPasswordPage() {
                     <button
                       type="button"
                       onClick={() => setShowNewPassword((visible) => !visible)}
-                      aria-label={showNewPassword ? "Hide password" : "Show password"}
+                      aria-label={showNewPassword ? t("Hide password") : t("Show password")}
                       aria-controls="new-password"
                       disabled={loading}
                       className="absolute inset-y-0 right-0 flex items-center rounded-r-xl px-3 text-[#0F5C88] hover:text-[#0D2340] focus-visible:outline-2 focus-visible:outline-[#0F5C88] disabled:opacity-50"
@@ -298,7 +283,7 @@ export default function ResetPasswordPage() {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="confirm-password" className="mb-2 block text-sm font-medium text-[#0D2340]">Confirm new password</label>
+                  <label htmlFor="confirm-password" className="mb-2 block text-sm font-medium text-[#0D2340]">{t("Confirm new password")}</label>
                   <div className="relative">
                     <input
                       id="confirm-password"
@@ -314,7 +299,7 @@ export default function ResetPasswordPage() {
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword((visible) => !visible)}
-                      aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                      aria-label={showConfirmPassword ? t("Hide confirm password") : t("Show confirm password")}
                       aria-controls="confirm-password"
                       disabled={loading}
                       className="absolute inset-y-0 right-0 flex items-center rounded-r-xl px-3 text-[#0F5C88] hover:text-[#0D2340] focus-visible:outline-2 focus-visible:outline-[#0F5C88] disabled:opacity-50"
@@ -324,23 +309,23 @@ export default function ResetPasswordPage() {
                   </div>
                 </div>
                 <button type="submit" disabled={loading} className="w-full rounded-xl bg-[#2F8DBB] py-3.5 font-medium text-white transition hover:bg-[#277EA7] disabled:cursor-not-allowed disabled:opacity-50">
-                  {loading ? "Updating..." : "Update password"}
+                  {loading ? t("Updating...") : t("Update password")}
                 </button>
               </form>
             )}
             {status === "success" && (
               <div className="space-y-4">
-                <p role="status" className="text-sm text-[#0F5C88]">Your password has been updated successfully.</p>
+                <p role="status" className="text-sm text-[#0F5C88]">{t("Your password has been updated successfully.")}</p>
                 {signedOut ? (
-                  <Link href="/login" className="text-sm font-medium text-[#0F5C88] hover:underline">Back to Sign In</Link>
+                  <Link href="/login" className="text-sm font-medium text-[#0F5C88] hover:underline">{t("Back to Sign In")}</Link>
                 ) : (
                   <button type="button" onClick={finishSignOut} disabled={loading} className="text-sm font-medium text-[#0F5C88] disabled:opacity-50">
-                    {loading ? "Signing out..." : "Finish signing out"}
+                    {loading ? t("Signing out...") : t("Finish signing out")}
                   </button>
                 )}
               </div>
             )}
-            {error && <p role="alert" className="mt-4 text-sm text-red-500">{error}</p>}
+            {error && <p role="alert" className="mt-4 text-sm text-red-500">{message(error)}</p>}
           </div>
         </div>
       </div>

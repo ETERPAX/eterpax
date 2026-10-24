@@ -2,9 +2,11 @@
 
 import { FormEvent, useRef, useState } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/components/LanguageProvider";
 import { supabase } from "@/lib/supabase";
 
 export default function ForgotPasswordPage() {
+  const { t, message } = useLanguage();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -69,18 +71,9 @@ export default function ForgotPasswordPage() {
 
             <div className="flex flex-1 items-center px-8 pb-20 lg:px-14">
               <div className="max-w-2xl">
-                <p className="mb-6 text-sm font-medium uppercase tracking-[0.28em] text-white/75">
-                  Welcome back.
-                </p>
-                <h2 className="max-w-lg font-serif text-5xl leading-[0.98] tracking-tight text-white md:text-6xl lg:text-7xl">
-                  Your continuity
-                  <br />
-                  is waiting.
-                </h2>
-                <p className="mt-6 max-w-xl text-lg leading-8 text-white/85">
-                  Your messages, your wishes, and the things that matter to you
-                  are safely waiting for you.
-                </p>
+                <p className="mb-6 text-sm font-medium uppercase tracking-[0.28em] text-white/75">{t("Welcome back.")}</p>
+                <h2 className="max-w-lg font-serif text-5xl leading-[0.98] tracking-tight text-white md:text-6xl lg:text-7xl">{t("Your continuity")}<br />{t("is waiting.")}</h2>
+                <p className="mt-6 max-w-xl text-lg leading-8 text-white/85">{t("Your messages, your wishes, and the things that matter to you are safely waiting for you.")}</p>
               </div>
             </div>
           </div>
@@ -92,19 +85,13 @@ export default function ForgotPasswordPage() {
               <Link href="/" className="text-sm font-semibold tracking-[0.28em] text-[#0F5C88]">
                 ETERPAX
               </Link>
-              <h1 className="mt-8 text-4xl font-light tracking-tight text-[#0D2340]">
-                Forgot your password?
-              </h1>
-              <p className="mt-3 text-base text-neutral-600">
-                Enter your email and we&apos;ll send instructions to reset your password.
-              </p>
+              <h1 className="mt-8 text-4xl font-light tracking-tight text-[#0D2340]">{t("Forgot your password?")}</h1>
+              <p className="mt-3 text-base text-neutral-600">{t("Enter your email and we'll send instructions to reset your password.")}</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label htmlFor="recovery-email" className="mb-2 block text-sm font-medium text-[#0D2340]">
-                  Email
-                </label>
+                <label htmlFor="recovery-email" className="mb-2 block text-sm font-medium text-[#0D2340]">{t("Email")}</label>
                 <input
                   id="recovery-email"
                   type="email"
@@ -118,11 +105,9 @@ export default function ForgotPasswordPage() {
                 />
               </div>
 
-              {error && <p role="alert" className="text-sm text-red-500">{error}</p>}
+              {error && <p role="alert" className="text-sm text-red-500">{message(error)}</p>}
               {sent && (
-                <p role="status" className="text-sm text-[#0F5C88]">
-                  If an account exists for this email, we&apos;ve sent password reset instructions.
-                </p>
+                <p role="status" className="text-sm text-[#0F5C88]">{t("If an account exists for this email, we've sent password reset instructions.")}</p>
               )}
 
               <button
@@ -130,14 +115,12 @@ export default function ForgotPasswordPage() {
                 disabled={loading}
                 className="w-full rounded-xl bg-[#2F8DBB] py-3.5 font-medium text-white transition hover:bg-[#277EA7] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? "Sending..." : "Send reset link"}
+                {loading ? t("Sending...") : t("Send reset link")}
               </button>
             </form>
 
             <div className="mt-8 text-center text-sm text-neutral-500">
-              <Link href="/login" className="font-medium text-[#0F5C88] hover:underline">
-                Back to Sign In
-              </Link>
+              <Link href="/login" className="font-medium text-[#0F5C88] hover:underline">{t("Back to Sign In")}</Link>
             </div>
           </div>
         </div>

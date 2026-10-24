@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLanguage } from "@/components/LanguageProvider";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Check, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -23,9 +24,10 @@ const frequencyOptions = [
     title: "Every 60 days",
     description: "A quieter, less frequent rhythm.",
   },
-];
+] as const;
 
 export default function CheckInSettingsPage() {
+  const { t } = useLanguage();
   const router = useRouter();
 
   const [selectedFrequency, setSelectedFrequency] = useState<number | null>(
@@ -86,7 +88,7 @@ export default function CheckInSettingsPage() {
       const parsedDays = Number(customDays);
 
       if (!Number.isInteger(parsedDays) || parsedDays < 1) {
-        alert("Please enter a valid number of days.");
+        alert(t("Please enter a valid number of days."));
         return;
       }
 
@@ -94,7 +96,7 @@ export default function CheckInSettingsPage() {
     }
 
     if (!frequencyDays) {
-      alert("Please select a check-in frequency.");
+      alert(t("Please select a check-in frequency."));
       return;
     }
 
@@ -115,19 +117,19 @@ export default function CheckInSettingsPage() {
 
     if (error) {
       console.error("ERROR SAVING CHECK-IN:", error);
-      alert("We could not save your Check-in settings.");
+      alert(t("We could not save your Check-in settings."));
       setSaving(false);
       return;
     }
 
-    alert("Your Check-in settings have been saved.");
+    alert(t("Your Check-in settings have been saved."));
     setSaving(false);
   };
 
   if (loading) {
     return (
       <main className="min-h-dvh bg-white flex items-center justify-center">
-        <p className="text-sm text-slate-500">Loading your Check-in...</p>
+        <p className="text-sm text-slate-500">{t("Loading your Check-in...")}</p>
       </main>
     );
   }
@@ -148,36 +150,23 @@ export default function CheckInSettingsPage() {
             href="/dashboard"
             className="inline-flex items-center gap-2 text-sm text-white transition hover:text-white/80"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Link>
+            <ArrowLeft className="h-4 w-4" />{t("Back to Dashboard")}</Link>
         </div>
 
         <div className="max-w-3xl">
           <div className="mb-3 lg:mb-2 flex items-center gap-2 text-sm font-medium text-white">
-            <ShieldCheck className="h-4 w-4" />
-            Your Continuity
-          </div>
+            <ShieldCheck className="h-4 w-4" />{t("Your Continuity")}</div>
 
-          <h1 className="text-4xl font-semibold tracking-tight text-white">
-            Your Check-in
-          </h1>
+          <h1 className="text-4xl font-semibold tracking-tight text-white">{t("Your Check-in")}</h1>
 
-          <p className="mt-4 lg:mt-2 max-w-2xl text-lg leading-8 text-white">
-            Stay connected to what you leave. Choose how often ETERPAX should
-            ask you to confirm that everything is still in place.
-          </p>
+          <p className="mt-4 lg:mt-2 max-w-2xl text-lg leading-8 text-white">{t("Stay connected to what you leave. Choose how often ETERPAX should ask you to confirm that everything is still in place.")}</p>
         </div>
 
         <section className="mt-12 lg:mt-[clamp(1rem,2dvh,3rem)]">
           <div className="mb-6 lg:mb-[clamp(0.75rem,1.5dvh,1.5rem)]">
-          <h2 className="text-xl font-semibold text-white">
-              Choose your rhythm
-            </h2>
+          <h2 className="text-xl font-semibold text-white">{t("Choose your rhythm")}</h2>
 
-            <p className="mt-2 text-sm leading-6 text-white">
-              You can change this preference whenever you want.
-            </p>
+            <p className="mt-2 text-sm leading-6 text-white">{t("You can change this preference whenever you want.")}</p>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -203,11 +192,11 @@ export default function CheckInSettingsPage() {
 
                   <div className="pr-8">
                     <p className="text-lg font-semibold text-slate-900">
-                      {option.title}
+                      {t(option.title)}
                     </p>
 
                     <p className="mt-2 text-sm leading-6 text-slate-500">
-                      {option.description}
+                      {t(option.description)}
                     </p>
                   </div>
                 </button>
@@ -226,13 +215,9 @@ export default function CheckInSettingsPage() {
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-lg font-semibold text-slate-900">
-                  Custom frequency
-                </p>
+                <p className="text-lg font-semibold text-slate-900">{t("Custom frequency")}</p>
 
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  Choose your own number of days between check-ins.
-                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-500">{t("Choose your own number of days between check-ins.")}</p>
               </div>
 
               {isCustom && (
@@ -248,12 +233,12 @@ export default function CheckInSettingsPage() {
                 onClick={(event) => event.stopPropagation()}
               >
                 <Input
-                label="Number of days"
+                label={t("Number of days")}
                   type="number"
                   min="1"
                   value={customDays}
                   onChange={(event) => setCustomDays(event.target.value)}
-                  placeholder="Number of days"
+                  placeholder={t("Number of days")}
                 />
               </div>
             )}
@@ -261,24 +246,14 @@ export default function CheckInSettingsPage() {
         </section>
 
         <section className="mt-10 rounded-2xl bg-slate-50 p-6 md:p-8 lg:mt-[clamp(1rem,2dvh,2.5rem)] lg:py-[clamp(0.75rem,1.5dvh,2rem)]">
-          <h2 className="text-lg font-semibold text-slate-900">
-            How Check-in works
-          </h2>
+          <h2 className="text-lg font-semibold text-slate-900">{t("How Check-in works")}</h2>
 
           <div className="mt-5 space-y-4 lg:mt-2 lg:space-y-2 text-sm leading-6 text-slate-600">
-            <p>
-              ETERPAX will ask you to confirm your Check-in according to the
-              rhythm you choose.
-            </p>
+            <p>{t("ETERPAX will ask you to confirm your Check-in according to the rhythm you choose.")}</p>
 
-            <p>
-              If three consecutive check-ins are missed, your Guardians can
-              help verify your situation.
-            </p>
+            <p>{t("If three consecutive check-ins are missed, your Guardians can help verify your situation.")}</p>
 
-            <p>
-              Your Guardians do not have access to your private Messages.
-            </p>
+            <p>{t("Your Guardians do not have access to your private Messages.")}</p>
           </div>
         </section>
 
@@ -286,9 +261,7 @@ export default function CheckInSettingsPage() {
           <Link
             href="/dashboard"
             className="inline-flex items-center justify-center rounded-xl border border-white/70 bg-white px-5 py-3 text-sm font-medium text-[#0D2340] transition hover:bg-white/90"
-          >
-            Cancel
-          </Link>
+          >{t("Cancel")}</Link>
 
           <button
             type="button"
@@ -296,7 +269,7 @@ export default function CheckInSettingsPage() {
             disabled={saving || selectedFrequency === null}
             className="inline-flex items-center justify-center rounded-xl bg-[#0A7BA8] px-6 py-3 text-sm font-medium text-white transition hover:bg-[#086A91] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {saving ? "Saving..." : "Save Changes"}
+            {saving ? t("Saving...") : t("Save Changes")}
           </button>
         </div>
       </div>

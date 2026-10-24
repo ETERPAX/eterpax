@@ -3,6 +3,7 @@
 
 
 import Link from "next/link";
+import { useLanguage } from "@/components/LanguageProvider";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { OnboardingFormLayout } from "./OnboardingFormLayout";
@@ -11,6 +12,9 @@ import { Input } from "@/components/ui/Input";
 import { supabase } from "@/lib/supabase";
 export function CreateAccountView({ mode = "create" }: { mode?: "create" | "edit" }) {
   const editing = mode === "edit";
+  const { t: translate, message: translateMessage } = useLanguage();
+  const t = (key: Parameters<typeof translate>[0]) => editing ? translate(key) : key;
+  const message = (text: string) => editing ? translateMessage(text) : text;
   const router = useRouter();
   const [loaded, setLoaded] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -117,40 +121,40 @@ const handleContinue = async () => {
 };
 
   if (editing && !loaded) return <main className="min-h-screen bg-[#F7F8FA] px-6 py-12">
-    <Link href="/settings" className="text-sm font-medium text-[#0F5C88]">← Back to Settings</Link>
-    <p className="mt-6" role={error ? "alert" : "status"}>{error || "Loading your account…"}</p>
+    <Link href="/settings" className="text-sm font-medium text-[#0F5C88]">{t("← Back to Settings")}</Link>
+    <p className="mt-6" role={error ? "alert" : "status"}>{message(error) || t("Loading your account…")}</p>
   </main>;
 
   const form = (
       <div className="space-y-6">
         <div className="space-y-3 text-center">
           <h1 className="text-5xl font-light tracking-tight text-[#0D2340]">
-          {editing ? "Personal information" : "Create Your Account"}
+          {editing ? t("Personal information") : "Create Your Account"}
           </h1>
 
           <p className="mx-auto max-w-lg text-lg leading-8 text-neutral-600">
-            {editing ? "Update your personal account details." : "Create your secure ETERPAX account and begin building your continuity plan."}
+            {editing ? t("Update your personal account details.") : "Create your secure ETERPAX account and begin building your continuity plan."}
           </p>
         </div>
 
         <div className="space-y-5">
 
         <Input
-  label="First Name"
-  placeholder="Enter your first name"
+  label={t("First Name")}
+  placeholder={t("Enter your first name")}
   value={firstName}
   onChange={(e) => setFirstName(e.target.value)}
 />
 
 <Input
-  label="Last Name"
-  placeholder="Enter your last name"
+  label={t("Last Name")}
+  placeholder={t("Enter your last name")}
   value={lastName}
   onChange={(e) => setLastName(e.target.value)}
 />
 
 <Input
-  label="Date of Birth"
+  label={t("Date of Birth")}
   type="date"
   value={dateOfBirth}
   onChange={(e) => setDateOfBirth(e.target.value)}
@@ -158,7 +162,7 @@ const handleContinue = async () => {
 
 {!editing && <>
 <Input
-  label="Email"
+  label={t("Email")}
   type="email"
   placeholder="Enter your email address"
   value={email}
@@ -166,7 +170,7 @@ const handleContinue = async () => {
 />
 
 <Input
-  label="Password"
+  label={t("Password")}
   type="password"
   placeholder="Create a strong password"
   value={password}
@@ -186,12 +190,12 @@ const handleContinue = async () => {
 </>}
 {error && (
   <p className="text-sm text-red-500 text-center">
-    {error}
+    {message(error)}
   </p>
 )}
 <div className="flex justify-center pt-4">
 <Button onClick={handleContinue} disabled={loading}>
-  {loading ? (editing ? "Saving..." : "Creating account...") : (editing ? "Save changes" : "Continue")}
+  {loading ? (editing ? t("Saving...") : "Creating account...") : (editing ? t("Save changes") : "Continue")}
 </Button>
 </div>
       </div>
@@ -199,7 +203,7 @@ const handleContinue = async () => {
   );
   if (editing) return <main className="min-h-screen bg-[#F7F8FA] px-6 py-12">
     <div className="mx-auto max-w-3xl">
-      <Link href="/settings" className="text-sm font-medium text-[#0F5C88] hover:underline">← Back to Settings</Link>
+      <Link href="/settings" className="text-sm font-medium text-[#0F5C88] hover:underline">{t("← Back to Settings")}</Link>
       <section className="mt-8 rounded-3xl border border-neutral-200 bg-white p-7">{form}</section>
     </div>
   </main>;
