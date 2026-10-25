@@ -21,7 +21,6 @@ export default function EterpaxLetterEditor({
 }: EterpaxLetterEditorProps) {
   const { message: ui } = useLanguage();
   const placeholder = ui("Dear...\nWrite what you want them to know.");
-  const placeholderRef = useRef(placeholder);
     const savedSelection = useRef<{ from: number; to: number } | null>(null);
     const [showColorPicker, setShowColorPicker] = useState(false);
   const editor = useEditor({
@@ -32,7 +31,7 @@ TextAlign.configure({
   types: ["heading", "paragraph"],
 }),
 Placeholder.configure({
-  placeholder: () => placeholderRef.current,
+  placeholder,
 }),
       ],
     content: value || "<p></p>",
@@ -55,9 +54,11 @@ Placeholder.configure({
   }, [editor]);
   
   useEffect(() => {
-    placeholderRef.current = placeholder;
+    if (!editor) return;
+    const extension = editor.extensionManager.extensions.find(item => item.name === "placeholder");
+    if (extension) extension.options.placeholder = placeholder;
     // Refresh placeholder decorations without changing the letter or editor history.
-    if (editor) editor.view.dispatch(editor.state.tr.setMeta("addToHistory", false));
+    editor.view.dispatch(editor.state.tr.setMeta("addToHistory", false));
   }, [editor, placeholder]);
 
   if (!editor) {
