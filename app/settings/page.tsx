@@ -78,6 +78,18 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        <details className="mt-6 rounded-3xl border border-neutral-200 bg-white p-7">
+          <summary className="cursor-pointer text-xl font-semibold text-[#0D2340]">{t("Install ETERPAX on your phone")}</summary>
+          <div className="mt-4 space-y-4 text-sm text-neutral-600">
+            <p>{t("Add ETERPAX to your Home Screen for easy access.")}</p>
+            <h3 className="font-semibold text-[#0D2340]">{t("iPhone · Safari")}</h3>
+            <p>{t("Open ETERPAX in Safari. Open the Share menu, choose Add to Home Screen, then Add. If Open as Web App appears, leave it enabled.")}</p>
+            <h3 className="font-semibold text-[#0D2340]">{t("Android · Chrome")}</h3>
+            <p>{t("Open ETERPAX in Chrome. Open the three-dot menu, choose Add to Home screen or Install app, and follow the instructions.")}</p>
+            <p>{t("An internet connection is required. You may need to sign in again after installation. Menu labels vary by device and browser version.")}</p>
+          </div>
+        </details>
+
         {/* Account */}
         <section className="mt-10 rounded-3xl border border-neutral-200 bg-white p-7">
           <h2 className="text-xl font-semibold text-[#0D2340]">{t("Account")}</h2>

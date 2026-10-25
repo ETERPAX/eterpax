@@ -1,5 +1,12 @@
 // English source strings are typed keys; technical identifiers never enter this catalog.
 export const en = {
+  "Install ETERPAX on your phone": "Install ETERPAX on your phone",
+  "Add ETERPAX to your Home Screen for easy access.": "Add ETERPAX to your Home Screen for easy access.",
+  "iPhone · Safari": "iPhone · Safari",
+  "Open ETERPAX in Safari. Open the Share menu, choose Add to Home Screen, then Add. If Open as Web App appears, leave it enabled.": "Open ETERPAX in Safari. Open the Share menu, choose Add to Home Screen, then Add. If Open as Web App appears, leave it enabled.",
+  "Android · Chrome": "Android · Chrome",
+  "Open ETERPAX in Chrome. Open the three-dot menu, choose Add to Home screen or Install app, and follow the instructions.": "Open ETERPAX in Chrome. Open the three-dot menu, choose Add to Home screen or Install app, and follow the instructions.",
+  "An internet connection is required. You may need to sign in again after installation. Menu labels vary by device and browser version.": "An internet connection is required. You may need to sign in again after installation. Menu labels vary by device and browser version.",
   "Unauthorized": "Unauthorized",
   "Unable to load Guardians": "Unable to load Guardians",
   "JSON required": "JSON required",
@@ -619,6 +626,13 @@ export const en = {
 export type TranslationKey = keyof typeof en;
 export type Locale = "en" | "es";
 export const es: Record<TranslationKey, string> = {
+  "Install ETERPAX on your phone": "Instala ETERPAX en tu celular",
+  "Add ETERPAX to your Home Screen for easy access.": "Agrega ETERPAX a tu pantalla de inicio para acceder fácilmente.",
+  "iPhone · Safari": "iPhone · Safari",
+  "Open ETERPAX in Safari. Open the Share menu, choose Add to Home Screen, then Add. If Open as Web App appears, leave it enabled.": "Abre ETERPAX en Safari. Abre el menú Compartir, elige Agregar a pantalla de inicio y luego Agregar. Si aparece Abrir como app web, deja la opción activada.",
+  "Android · Chrome": "Android · Chrome",
+  "Open ETERPAX in Chrome. Open the three-dot menu, choose Add to Home screen or Install app, and follow the instructions.": "Abre ETERPAX en Chrome. Abre el menú de tres puntos, elige Agregar a la pantalla principal o Instalar app y sigue las instrucciones.",
+  "An internet connection is required. You may need to sign in again after installation. Menu labels vary by device and browser version.": "Se requiere conexión a internet. Es posible que debas iniciar sesión de nuevo después de instalarla. Los nombres de las opciones varían según el dispositivo y la versión del navegador.",
   "Unauthorized": "Inicia sesión para continuar.",
   "Unable to load Guardians": "No se pudieron cargar los Guardianes.",
   "JSON required": "La solicitud debe enviarse en formato JSON.",

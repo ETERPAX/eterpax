@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/components/LanguageProvider";
@@ -13,7 +13,11 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = { themeColor: "#102A43" };
+
 export const metadata: Metadata = {
+  applicationName: "ETERPAX",
+  appleWebApp: { capable: true, title: "ETERPAX", statusBarStyle: "default" },
   title: "ETERPAX — Protect what matters. Forever.",
   description:
     "Secure your memories, messages, passwords and digital legacy with military-grade encryption.",
