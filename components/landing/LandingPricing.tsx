@@ -1,42 +1,25 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
-import { PricingCard } from "@/components/landing/PricingCard";
-import { plans, type Plan } from "@/lib/billing/plans";
+import { plans } from "@/lib/billing/plans";
 
 export function LandingPricing() {
-  const { t, message: ui } = useLanguage();
-  const [selected, setSelected] = useState<Plan | null>(null);
+  const { t } = useLanguage();
+  const [open, setOpen] = useState(false);
 
   return <>
-    <div className="mt-9 grid gap-6 lg:grid-cols-3">
-      {(Object.keys(plans) as Plan[]).map((key) => {
-        const plan = plans[key];
-        return <PricingCard
-          key={key}
-          plan={{
-            name: ui(plan.name),
-            price: plan.price,
-            period: ui(plan.period),
-            description: ui(plan.description),
-            features: [t("Unlimited messages. Supported formats and file-size limits still apply.")],
-            cta: t("View plan details"),
-            highlighted: false,
-          }}
-          onDetails={() => setSelected(key)}
-        />;
-      })}
-    </div>
-    {selected && <PlanDetails plan={selected} onClose={() => setSelected(null)} />}
+    <button type="button" onClick={() => setOpen(true)}
+      className="text-sm font-medium text-white/70 transition hover:text-white">
+      {t("Plans & pricing")}
+    </button>
+    {open && <PricingDialog onClose={() => setOpen(false)} />}
   </>;
 }
 
-function PlanDetails({ plan: key, onClose }: { plan: Plan; onClose: () => void }) {
+function PricingDialog({ onClose }: { onClose: () => void }) {
   const { t, message: ui } = useLanguage();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const plan = plans[key];
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -50,21 +33,27 @@ function PlanDetails({ plan: key, onClose }: { plan: Plan; onClose: () => void }
 
   return <dialog
     ref={dialogRef}
-    aria-labelledby="landing-plan-title"
+    aria-labelledby="landing-pricing-title"
     onCancel={onClose}
-    className="fixed inset-0 m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-[28px] border border-white/70 bg-[#F7F8FA] p-6 text-[#0D2340] shadow-2xl backdrop:bg-black/50 backdrop:backdrop-blur-sm sm:p-8"
+    className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2.5rem)] max-w-xl overflow-y-auto rounded-[30px] border border-white/30 bg-white/95 p-7 text-[#102A43] shadow-2xl backdrop-blur-xl backdrop:bg-black/45 backdrop:backdrop-blur-sm md:p-9"
   >
     <button type="button" onClick={onClose} aria-label={t("Close")}
-      className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-[#0A7BA8]/10 text-2xl focus-visible:outline-2 focus-visible:outline-[#0A7BA8]">
+      className="absolute right-5 top-5 text-2xl font-light text-slate-400 transition hover:text-slate-700">
       <span aria-hidden="true">×</span>
     </button>
-    <h2 id="landing-plan-title" className="pr-10 font-serif text-3xl">{ui(plan.name)}</h2>
-    <p className="mt-5 flex flex-wrap items-baseline gap-2"><span className="text-4xl font-semibold">{plan.price}</span> {ui(plan.period)}</p>
-    <p className="mt-4 leading-7">{ui(plan.description)}</p>
-    <p className="mt-4 leading-7">{t("Unlimited messages. Supported formats and file-size limits still apply.")}</p>
-    <p className="mt-5 border-t border-slate-200 pt-5 text-sm leading-6">{t("No credit card required until you choose your plan.")}</p>
-    <Link href="/create-account" className="mt-6 inline-flex rounded-full bg-[#0A7BA8] px-6 py-3 text-center font-medium text-white hover:bg-[#08698F]">
-      {t("Create Your First Message")}
-    </Link>
+    <h2 id="landing-pricing-title" className="pr-8 font-serif text-3xl">{t("Plans & pricing")}</h2>
+    <dl className="mt-5 divide-y divide-slate-200">
+      {Object.values(plans).map((plan) => <div key={plan.name} className="py-3">
+        <dt className="font-medium">{ui(plan.name)}</dt>
+        <dd className="mt-1 text-sm leading-6">
+          <span className="font-semibold">{plan.price}</span>{" "}{ui(plan.period)}
+          <p className="text-[#627D98]">{ui(plan.description)}</p>
+        </dd>
+      </div>)}
+    </dl>
+    <div className="mt-3 border-t border-slate-200 pt-5 text-sm leading-6 text-[#627D98]">
+      <p>{t("Enjoy 15 days to create your collection, plus 15 more days to choose your plan. No payment details needed until you're ready to subscribe.")}</p>
+      <p className="mt-3 font-medium text-[#486581]">{t("No credit card required until you choose your plan.")}</p>
+    </div>
   </dialog>;
 }

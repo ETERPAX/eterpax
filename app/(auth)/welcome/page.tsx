@@ -2,25 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { useLanguage } from "@/components/LanguageProvider";
 import { LandingPricing } from "@/components/landing/LandingPricing";
+import { useLanguage } from "@/components/LanguageProvider";
 
 export default function WelcomePage() {
   const { t, locale, setLocale } = useLanguage();
   const [showJourney, setShowJourney] = useState(false);
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#102A43]">
-      <div className="relative">
       {/* HERO IMAGE */}
       <div className="absolute inset-0">
-        <Image
+        <img
           src="/images/hero-family-v2.jpg"
           alt=""
-          fill
-          sizes="100vw"
-          preload
-          unoptimized
           className="h-full w-full object-cover object-right"
         />
 
@@ -98,10 +92,6 @@ export default function WelcomePage() {
                 <span className="ml-3">→</span>
               </Link>
 
-              <p className="mt-4 max-w-xl text-sm leading-6 text-white/90">
-                {t("No credit card required until you choose your plan.")}
-              </p>
-
               <p className="mt-4 text-sm tracking-wide text-white/60">
                 {t("A private place for what you want to leave.")}
               </p>
@@ -115,6 +105,7 @@ export default function WelcomePage() {
             {t("Private by design. Always in your control.")}
           </div>
 
+          <div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
           <button
   type="button"
   onClick={() => setShowJourney(true)}
@@ -122,20 +113,10 @@ export default function WelcomePage() {
 >
   {t("How ETERPAX works →")}
 </button>
+            <LandingPricing />
+          </div>
         </div>
       </div>
-      </div>
-      <section id="pricing" aria-labelledby="pricing-heading" className="relative z-10 border-t border-white/20 bg-[#102A43] px-8 py-12 lg:px-14 lg:py-16">
-        <div className="mx-auto max-w-7xl">
-          <h2 id="pricing-heading" className="max-w-3xl font-serif text-3xl leading-tight text-white md:text-4xl">
-            {t("Start Free. No Credit Card Required.")}
-          </h2>
-          <p className="mt-5 max-w-3xl text-base leading-7 text-white/85 md:text-lg">
-            {t("Enjoy 15 days to create your collection, plus 15 more days to choose your plan. No payment details needed until you're ready to subscribe.")}
-          </p>
-          <LandingPricing />
-        </div>
-      </section>
       {showJourney && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-5 py-6 backdrop-blur-sm">
     <div className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[30px] border border-white/30 bg-white/95 p-7 shadow-2xl backdrop-blur-xl md:p-9">
