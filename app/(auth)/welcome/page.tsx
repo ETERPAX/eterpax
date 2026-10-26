@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useLanguage } from "@/components/LanguageProvider";
+import { LandingPricing } from "@/components/landing/LandingPricing";
 
 export default function WelcomePage() {
   const { t, locale, setLocale } = useLanguage();
@@ -12,9 +14,13 @@ export default function WelcomePage() {
       <div className="relative">
       {/* HERO IMAGE */}
       <div className="absolute inset-0">
-        <img
+        <Image
           src="/images/hero-family-v2.jpg"
           alt=""
+          fill
+          sizes="100vw"
+          preload
+          unoptimized
           className="h-full w-full object-cover object-right"
         />
 
@@ -127,6 +133,7 @@ export default function WelcomePage() {
           <p className="mt-5 max-w-3xl text-base leading-7 text-white/85 md:text-lg">
             {t("Enjoy 15 days to create your collection, plus 15 more days to choose your plan. No payment details needed until you're ready to subscribe.")}
           </p>
+          <LandingPricing />
         </div>
       </section>
       {showJourney && (

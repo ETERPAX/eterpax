@@ -1,5 +1,6 @@
 // English source strings are typed keys; technical identifiers never enter this catalog.
 export const en = {
+  "View plan details": "View plan details",
   "Start Free. No Credit Card Required.": "Start Free. No Credit Card Required.",
   "Enjoy 15 days to create your collection, plus 15 more days to choose your plan. No payment details needed until you're ready to subscribe.": "Enjoy 15 days to create your collection, plus 15 more days to choose your plan. No payment details needed until you're ready to subscribe.",
   "No credit card required until you choose your plan.": "No credit card required until you choose your plan.",
@@ -629,6 +630,7 @@ export const en = {
 export type TranslationKey = keyof typeof en;
 export type Locale = "en" | "es";
 export const es: Record<TranslationKey, string> = {
+  "View plan details": "Ver detalles del plan",
   "Start Free. No Credit Card Required.": "Comienza gratis. Sin tarjeta de crédito.",
   "Enjoy 15 days to create your collection, plus 15 more days to choose your plan. No payment details needed until you're ready to subscribe.": "Tienes 15 días para crear tu colección y 15 días adicionales para elegir tu plan. No necesitas proporcionar datos de pago hasta que decidas suscribirte.",
   "No credit card required until you choose your plan.": "No necesitas tarjeta de crédito hasta que elijas tu plan.",

@@ -16,9 +16,10 @@ type PricingPlan = {
 
 type PricingCardProps = {
   plan: PricingPlan;
+  onDetails?: () => void;
 };
 
-export function PricingCard({ plan }: PricingCardProps) {
+export function PricingCard({ plan, onDetails }: PricingCardProps) {
   return (
     <motion.div
       variants={fadeUp}
@@ -36,7 +37,7 @@ export function PricingCard({ plan }: PricingCardProps) {
       <h3 className={`text-lg font-bold ${plan.highlighted ? "text-white" : "text-black"}`}>
         {plan.name}
       </h3>
-      <div className="mt-4 flex items-baseline gap-1">
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <span className={`text-4xl font-bold ${plan.highlighted ? "text-white" : "text-black"}`}>
           {plan.price}
         </span>
@@ -62,7 +63,13 @@ export function PricingCard({ plan }: PricingCardProps) {
           </li>
         ))}
       </ul>
-      <a
+      {onDetails ? <button
+        type="button"
+        onClick={onDetails}
+        className="mt-8 block rounded-full bg-[#0A7BA8] px-4 py-3.5 text-center text-sm font-medium text-white transition hover:bg-[#08698F] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0A7BA8]"
+      >
+        {plan.cta}
+      </button> : <a
         href="#"
         className={`mt-8 block rounded-full py-3.5 text-center text-sm font-medium transition-all ${
           plan.highlighted
@@ -71,7 +78,7 @@ export function PricingCard({ plan }: PricingCardProps) {
         }`}
       >
         {plan.cta}
-      </a>
+      </a>}
     </motion.div>
   );
 }
