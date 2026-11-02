@@ -6,16 +6,19 @@ Implementación aislada en `feature/social-annual-promotion`, sobre el commit
 `10e6c36` y la base de producción `d56c0ee`. El repositorio original
 `/Users/Colocha/Projects/eterpax`, su rama y sus cambios pendientes se conservan.
 
-La política de vencimiento y continuidad descrita abajo fue aprobada por el
-usuario. **La campaña sigue deshabilitada.** No se han aplicado estas migraciones
-ni cargado hashes en producción. No se generaron códigos nuevos y no se consumió
-ninguno de los 20 códigos existentes. No se enviaron correos reales.
+La política de vencimiento y continuidad fue aprobada por el usuario.
+**La campaña sigue deshabilitada.** El 2026-11-02 el titular confirmó la ejecución
+manual en producción de 01 y 02, carga de los 20 hashes originales mediante 03
+y verificación 04b: 10/10 disponibles por plataforma, cero beneficios, RLS activo,
+seis triggers promocionales, motor filtrado y ambos gates apagados. El preflight
+real exportado se contrastó con las migraciones antes de indicar su ejecución.
+La evidencia privada está fuera de Git. No se generaron ni consumieron códigos.
 
-Vercel fue consultado con la sesión local renovada: proyecto `eterpax`, rama de
-producción `sprint-1-landing`, despliegue READY `dpl_DGsc17ys2jK1b4N5ESivqLouJuor`,
-commit `d56c0ee4ea6651d57d65ab4f92d15c614035a573`. Esa evidencia corresponde a la
-versión anterior, no a esta implementación. No se integra la rama de producción
-antes de disponer de la migración: el nuevo editor depende del RPC de permisos.
+La rama remota de producción `sprint-1-landing` sigue en `d56c0ee` al iniciar
+esta publicación. Se integra únicamente esta rama por el flujo Git de Vercel,
+con los flags de campaña ausentes/false. La verificación del despliegue READY,
+SHA y readiness autenticado se registrará por separado; este documento no
+presenta un despliegue pendiente como completado.
 
 ## Acceso administrativo
 
@@ -170,15 +173,12 @@ beneficios, inventarios, reservas, mensajes o ledger; no tocar ciclos en curso.
 - TypeScript sin errores. Lint global: 0 errores, 34 advertencias preexistentes.
   Build Webpack de producción completado con valores públicos ficticios de
   Supabase. Ese artefacto local no se publica: Vercel recompila con sus variables.
-- No hay validación de SQL contra producción ni evidencia de nueva migración o
-  activación remota. No presentar este estado como campaña habilitada.
+- La aplicación de las migraciones y carga de hashes fue reportada por el titular
+  con el resultado de 04b. La compatibilidad de las definiciones del preflight
+  fue revisada localmente; la verificación HTTP de producción es el siguiente paso.
 
-## Siguiente paso manual
+## Siguiente paso
 
-Pendiente de recibir el resultado de `00-preflight.sql` ejecutado en la DB actual.
-Revisarlo antes de indicar 01 o 02; no asumir que ninguna migración fue aplicada
-por terceros. Después se revisarán la carga de los hashes originales (03) y el
-recibo de instalación deshabilitada (04). Solo entonces procede la integración
-Git y el despliegue ya autorizados. La repetición del motor general no es un
-bloqueo: el bloqueo actual es la falta de evidencia de la DB y de acceso SQL
-administrativo para obtenerla directamente.
+Publicar la aplicación compatible con gates apagados, comprobar revisión exacta,
+readiness y formulario bilingüe sin canjear códigos. Solo después indicar 05;
+los flags de servidor se habilitan en una publicación posterior del mismo commit.
