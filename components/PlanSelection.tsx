@@ -1,4 +1,5 @@
 "use client";
+import { PromotionCode } from "@/components/promotions/PromotionCode";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useEffect, useState } from "react";
 import { plans, type Plan } from "@/lib/billing/plans";
@@ -46,6 +47,7 @@ export function PlanSelection() {
       </section>)}
     </div>
     <p className="mt-4 text-sm">{ui("Purchasing a plan does not automatically cancel any existing subscription.")}</p>
+    <PromotionCode />
     {notice && <p role="status" className="mt-4">{ui(notice)}</p>}
   </div>;
 }
