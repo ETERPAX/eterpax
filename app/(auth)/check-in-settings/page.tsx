@@ -1,4 +1,5 @@
 "use client";
+import { usePromotionPermissions, PromotionPermissionNotice } from "@/components/promotions/PromotionPermissions";
 
 import Link from "next/link";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -27,6 +28,7 @@ const frequencyOptions = [
 ] as const;
 
 export default function CheckInSettingsPage() {
+  const promotionPermission = usePromotionPermissions();
   const { t } = useLanguage();
   const router = useRouter();
 
@@ -82,6 +84,7 @@ export default function CheckInSettingsPage() {
   }, [router]);
 
   const handleSave = async () => {
+    if (promotionPermission !== "allowed") return;
     let frequencyDays = selectedFrequency;
 
     if (isCustom) {
@@ -125,6 +128,8 @@ export default function CheckInSettingsPage() {
     alert(t("Your Check-in settings have been saved."));
     setSaving(false);
   };
+
+  if (promotionPermission !== "allowed") return <PromotionPermissionNotice state={promotionPermission} />;
 
   if (loading) {
     return (

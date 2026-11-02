@@ -6,6 +6,8 @@ import os
 import pathlib
 import subprocess
 import tempfile
+import runpy
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 BIN = pathlib.Path(os.environ.get('PG_BIN', '/usr/local/opt/postgresql@17/bin'))
@@ -148,6 +150,8 @@ END $$;""")
         # Guardian save consumes the shared entitlement, unchanged selection rules.
         guardians = json.dumps([dict(name='Fixture', relationship='Friend', email=f'fixture{i}@example.invalid', id=None) for i in range(2)])
         assert json.loads(sql(f"SELECT save_guardian_selection('{uid(1)}','{{}}','{guardians}');"))['active'] is True
+        if '--expiry' in sys.argv:
+            runpy.run_path(str(ROOT/'tests/promotion-expiry-checks.py'))['run'](sql, redeem, uid, digest, ROOT)
         print('PASS: 12 calendar months, access, reuse, concurrency, account uniqueness, paid preservation, initial/existing Check-in, expiry, rate limit, RLS, inventory idempotence, Guardian gating.')
     finally:
         if started:

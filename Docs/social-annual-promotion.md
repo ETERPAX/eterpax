@@ -1,127 +1,166 @@
-# Campaña anual Instagram / Facebook
+# Campaña anual: vencimiento, avisos e instalación
 
-## Estado y alcance
+## Estado de esta entrega
 
-Base revisada: `origin/sprint-1-landing` en `d56c0ee`. Implementación aislada en
-`feature/social-annual-promotion`, checkout `eterpax-social-promotion`.
-La rama inicialmente abierta, `feature/change4-guardian-verification`, contiene
-trabajo ajeno sin commit. No se copió, modificó, descartó ni incluyó en este cambio.
-La arquitectura de tres planes y la interfaz bilingüe ya están en la base remota;
-la rama inicialmente abierta todavía usa una arquitectura anterior.
+Implementación aislada en `feature/social-annual-promotion`, sobre el commit
+`10e6c36` y la base de producción `d56c0ee`. El repositorio original
+`/Users/Colocha/Projects/eterpax`, su rama y sus cambios pendientes se conservan.
 
-**La campaña debe permanecer deshabilitada.** El usuario decidió posponer la
-política de vencimiento. No se han aplicado migraciones, cargado hashes, activado
-variables ni publicado la aplicación con este trabajo. Generar el archivo privado
-no hace canjeables los códigos hasta instalar su inventario y abrir ambos gates.
-No se envían mensajes, no se publican códigos en redes y no se contacta a nadie.
+La política de vencimiento y continuidad descrita abajo fue aprobada por el
+usuario. **La campaña sigue deshabilitada.** No se han aplicado estas migraciones
+ni cargado hashes en producción. No se generaron códigos nuevos y no se consumió
+ninguno de los 20 códigos existentes. No se enviaron correos reales.
 
-## Contrato
+Vercel fue consultado con la sesión local renovada: proyecto `eterpax`, rama de
+producción `sprint-1-landing`, despliegue READY `dpl_DGsc17ys2jK1b4N5ESivqLouJuor`,
+commit `d56c0ee4ea6651d57d65ab4f92d15c614035a573`. Esa evidencia corresponde a la
+versión anterior, no a esta implementación. No se integra la rama de producción
+antes de disponer de la migración: el nuevo editor depende del RPC de permisos.
 
-- Campaña única `social-annual-2026`: 10 slots Instagram y 10 Facebook, sin cupos
-  adicionales. Códigos aleatorios de 192 bits; SHA-256 en la base de datos.
-- Cada cuenta puede recibir un solo beneficio, incluso después de vencer.
-  Cada código puede beneficiar a una sola cuenta. La cuenta proviene del token
-  autenticado, nunca de un campo del formulario. Correo confirmado se comprueba
-  en servidor y nuevamente en PostgreSQL.
-- El servidor calcula inicio/canje y vencimiento en UTC con `interval '12 months'`;
-  no usa 365 días, reloj del navegador ni tiempo desde la generación del código.
-- `promotional_access` enlaza el código, campaña y plataforma; registra cuenta,
-  canje, inicio y vencimiento. Solo un RPC ligado a `auth.uid()` expone el beneficio
-  propio, nunca hashes. RLS y revocación de permisos protegen tablas privadas.
-- Un bloqueo por cuenta, compartido con Stripe/Guardian, y bloqueo de código
-  serializan los canjes. Restricciones únicas impiden doble beneficio/código.
-  Hasta 5 intentos por cuenta cada 15 minutos; el presupuesto persiste incluso en
-  respuestas inválidas. Los errores no registran cuerpos, códigos ni tokens.
-- Suscripciones activas, Lifetime y suscripciones aún potencialmente cobrables
-  no son elegibles (solo estados `canceled`/`incomplete_expired` se admiten).
-  No se invoca Stripe ni se modifica/cancela ninguna suscripción.
-- `has_paid_plan` mantiene su significado. `has_plan_access` agrega promoción
-  vigente al gating existente de Guardian; el RPC de elegibilidad informa
-  `access_kind=promotion`. No se simula pago ni Lifetime.
-- El repositorio no limita el número de mensajes por plan. Se conservan los
-  permisos existentes y la organización, formatos y límites de adjuntos por
-  mensaje. No se introduce una política nueva de almacenamiento ni RLS de mensajes.
-- El ledger de activación admite una fuente promocional real con FK. Solo una
-  configuración nueva pendiente, deshabilitada, sin historial, en `scheduled`,
-  sin fallos ni plazo de respuesta, inicia su primer Check-in. Un ciclo existente
-  queda intacto. Una configuración creada después del canje comienza desde su
-  configuración, sin fechas vencidas derivadas del día de canje.
-- El canje no llama a colas ni remitentes de notificaciones, entregas o Guardian.
-  No hay tarea al vencer: no cobra, borra, reprograma, reinicia ni libera mensajes.
-  Las acciones explícitas posteriores de guardar Guardian conservan su lógica.
-- “Tengo un código / I have a code” aparece en la selección de planes, tanto en
-  pago como en Your Plan. La cuenta muestra origen, estado y vencimiento UTC.
-  Si la respuesta de red es incierta se pide actualizar la cuenta antes de repetir.
+## Acceso administrativo
 
-## Decisión de vencimiento pendiente
+Se revisó `/Users/Colocha/Backups/eterpax-production-db/connection.json`: contiene
+`host`, `port`, `user` y `dbname`; **no contiene contraseña**. Los scripts de
+respaldo y migración allí presentes usan `getpass`, no una contraseña persistida.
+No se encontró ejecutable de Supabase CLI, archivo de token en sus ubicaciones
+habituales ni credencial disponible en los servicios de Keychain revisados.
+La clave Supabase de la aplicación no es una conexión SQL administrativa.
 
-`Docs/activation-policy-phase1.md` documenta una política **informativa**, sin
-restricciones de escritura, eliminación ni cambio de Continuity Engine. No hay
-política completa de acceso vencido reutilizable para esta promoción.
+El respaldo `backup-20261022T185227Z-EXPORTED/database.dump` permitió contrastar
+solo el esquema histórico. Su motor contiene exactamente una vez el predicado
+que cambia esta migración; el trigger de correo solo actúa al pasar de
+`scheduled` a `awaiting_response`, no por la activación inicial de un plan.
+El respaldo no demuestra el estado actual de producción: ejecutar el preflight.
 
-El código calcula `promotion_expired` y deja de conceder `has_plan_access` por la
-promoción vencida; un plan pagado conserva prioridad. No cambia mensajes ni ciclos
-ya existentes. Esto permite probar el término sin elegir una política comercial.
-La única opción técnica preparada en el gate, `retain_data_and_continuity`, no
-está seleccionada ni aprobada. Antes de habilitar hay que decidir explícitamente
-permisos de lectura/escritura, nuevas configuraciones y continuidad tras vencer;
-si la decisión difiere, ajustar y revalidar primero. No interpretar este documento
-como aprobación para habilitar ni para modificar la política de usuarios pagados.
+## Política aprobada
 
-## Publicación, en orden
+- Al vencer una promoción sin otro plan vigente, impedir creación/edición de
+  mensajes y adjuntos, nuevas configuraciones de Check-in y nuevos ciclos.
+  Un ciclo `scheduled` con cero fallos, sin solicitud emitida, aún no empezó.
+- Una solicitud `awaiting_response`, sus reintentos (`missed_count>0`), verificación
+  de Guardianes, Safety Window y entrega ya autorizada siguen sus reglas
+  originales. No se cancela, deshabilita, reprograma ni cambia su generación.
+  El motor conserva sus bloqueos, plazos y creación de escalaciones; únicamente
+  se añade un filtro para no iniciar ciclos nuevos de promociones vencidas.
+- El titular conserva `confirm_check_in()`: puede confirmar que está bien y
+  detener una escalación mediante el flujo ya existente. Esa acción voluntaria
+  conserva su semántica original. El ciclo siguiente no comenzará sin plan.
+- El vencimiento no ejecuta entregas ni decide una liberación. Un proceso previo
+  puede llegar a entregar después del vencimiento únicamente por sus reglas
+  originales de verificación, mayoría, Safety Window y autorización.
+- Se mantienen lectura, descarga y eliminación de mensajes. Las restricciones
+  de seguridad preexistentes para eliminación durante continuidad o de mensajes
+  ya liberados permanecen: la promoción no autoriza saltarlas. La transición
+  interna de borrado puede ejecutarse sin permitir cambios de contenido adjuntos.
+- No hay cobro, renovación automática ni borrado por vencimiento. Las
+  suscripciones y Lifetime conservan prioridad según `has_paid_plan()` vigente.
+- La compra restaura permisos por consulta del plan, sin crear otra activación
+  ni resetear Check-in. Se conserva el ciclo/fecha existente; un ciclo pendiente
+  puede empezar en la siguiente ejecución normal del motor si su fecha ya llegó.
 
-1. Revalidar el HEAD remoto e integrar **solo** este commit conforme al flujo
-   del repositorio. El push de la rama aislada no equivale a despliegue.
-2. Ejecutar `scripts/social-promotion-preflight.sql` (solo lectura) en el proyecto
-   correcto. Revisar que las funciones reales coincidan con las migraciones base
-   `202610060002`, `202610060003`, `202610210002`, `202610210004`, y que los triggers
-   de `check_ins` no emitan eventos por la transición inicial `scheduled` →
-   `scheduled`. La prueba local no certifica el esquema desplegado ni triggers
-   externos no versionados. Si hay drift, detener aplicación y adaptar el diff.
-3. Aplicar una vez `supabase/migrations/202611010001_social_annual_promotion.sql`
-   en su transacción. No volver a aplicar todo el historial ni reiniciar el reloj
-   de `account_activation_policy`. La nueva campaña nace `enabled=false`,
-   `expiry_policy=NULL`.
-4. Mantener `SOCIAL_PROMOTION_ENABLED` ausente o `false` en servidor. Nunca usar
-   una variable `NEXT_PUBLIC_` para habilitar canjes. Usar las credenciales Supabase
-   existentes del servidor (`SUPABASE_SECRET_KEY`); no requiere secretos nuevos.
-5. Tras validación, generar el inventario privado con:
-   `node scripts/generate-social-promotion.mjs /ruta/privada/fuera-de-git`.
-   Directorio 0700, archivo JSON 0600, separado por plataforma. Repetir con esa
-   misma ruta conserva exactamente los mismos 20 códigos. Respaldar de forma
-   privada; no borrar/recrear el inventario para “regenerar”. Una ruta distinta
-   no permite añadir códigos: el RPC rechaza hashes distintos de los instalados.
-6. Cuando corresponda cargar el inventario, aplicar el `install-hashes.sql`
-   privado generado al proyecto revisado. Contiene hashes, no códigos utilizables.
-   Repetir ese mismo archivo es idempotente. No habilita el canje.
-7. Publicar la aplicación tras migrar y probar cuentas sintéticas en un proyecto
-   de pruebas independiente. No instalar códigos de laboratorio en producción.
-8. **Detenerse aquí hasta resolver la política de vencimiento.** Solo después
-   de una decisión explícita y su validación se pueden configurar la política,
-   `promotion_campaign.enabled=true` y `SOCIAL_PROMOTION_ENABLED=true`.
-   No hay script que haga automáticamente esa habilitación.
+## Canje y privacidad
 
-Para suspender canjes, cerrar ambos gates. Esto conserva beneficios ya otorgados,
-fechas, inventario, historial y ciclos; no revertir tablas ni borrar el ledger.
+Continúan los contratos de `10e6c36`: campaña `social-annual-2026`, 10 slots por
+plataforma, códigos aleatorios de 192 bits almacenados como SHA-256, correo
+verificado, cuenta derivada del token, bloqueo transaccional por cuenta y código,
+12 meses calendario UTC desde el canje, un beneficio por cuenta para siempre y
+5 intentos cada 15 minutos. No se crean suscripciones ficticias ni acceso Lifetime.
+El inventario original está fuera de Git en `eterpax-private-social-2026`.
 
-## Validación local
+Los bloqueos de vencimiento son triggers de DB y políticas restrictivas de Storage;
+no dependen del navegador. El cliente muestra estado bilingüe y actualiza permisos
+al recuperar foco o cada 30 segundos. Las lecturas/descargas no reciben una nueva
+restricción. `promotion_writes_allowed` solo restringe promociones vencidas;
+no cambia la política de otras cuentas gratuitas ni los planes pagados.
 
-- `python3 tests/social-promotion-integration.py`: PostgreSQL 17 desechable,
-  sin conexiones externas. Configurable con `PG_BIN`. Instala las migraciones
-  originales de activación/planes y la nueva sobre fixtures. Valida 12 meses,
-  año bisiesto, límite exacto de vencimiento, carreras de dos cuentas/un código y
-  una cuenta/dos plataformas, cuenta pagada sin cambios, correo no verificado,
-  cinco intentos/15 minutos, RLS/grants, inventario idempotente y rechazo de
-  reemplazo, Guardian gating, primer Check-in y preservación de ciclo existente.
-  La opción de vencimiento se habilita únicamente en este laboratorio desechable.
-- `node --test tests/social-promotion.test.mjs tests/activation-policy.test.mjs`:
-  hash, generador privado/idempotente, validación de RPC y presentación, endpoint
-  con dependencias simuladas, autenticación/correo, gate, límite de cuerpo,
-  respuestas HTTP y ausencia de códigos en argumentos DB/respuestas.
-- `node_modules/.bin/tsc --noEmit --incremental false` y ESLint de los archivos
-  modificados. Compilación de producción con valores públicos ficticios de
-  Supabase; no usa credenciales reales ni activa integraciones.
+## Avisos de 30 y 7 días
 
-Las pruebas no gastan ninguno de los 20 códigos finales ni envían correos. El
-estado Problems del IDE no está expuesto a esta sesión: los diagnósticos se
-verifican con TypeScript, lint y compilación; no se afirma leer el panel del IDE.
+Cron dedicado `/api/cron/promotion-expiry`, cada minuto, protegido por `CRON_SECRET`.
+Requiere `PROMOTION_EXPIRY_NOTICES_ENABLED=true`, entorno Production y el gate DB
+`promotion_notice_settings.enabled=true`. No llama al motor ni a entrega privada.
+
+Cada cuenta/plazo tiene una fila única. La reserva de envío se confirma antes de
+llamar a Resend; el proveedor recibe una clave de idempotencia estable. Se registran
+aceptación e ID de proveedor. Errores o respuestas ambiguas quedan `uncertain` sin
+reenvío automático, incluso después de vencer la idempotencia del proveedor.
+Un fallo de cron se recupera en la ventana vigente; no se envía el aviso de 30 días
+al alcanzar 7 días, ni avisos después de vencer. Otro plan válido suprime avisos aún
+no reservados. Un aviso en vuelo puede terminar; su texto reconoce otros planes.
+
+La ejecución no puede garantizar la recepción en inbox ni simultáneamente prometer
+reintento ilimitado y cero duplicados ante un resultado desconocido. Revisar
+`uncertain` con el proveedor antes de cualquier reconciliación manual; no liberar
+reservas ni volver a enviar automáticamente. Los emails contienen fechas UTC y
+texto EN/ES; nunca códigos, secretos ni contenido privado de mensajes.
+
+## SQL exacto para ejecución manual
+
+Paquete privado ya preparado, sin generar códigos:
+`/Users/Colocha/Projects/eterpax-private-social-2026/manual-deployment/`.
+Los archivos tienen permisos 0600; `SHA256.json` verifica sus bytes.
+
+Ejecutar en el proyecto correcto de Supabase, SQL Editor, **uno por uno**:
+
+1. `00-preflight.sql`: solo lectura. Revisar requisitos, funciones y triggers.
+   Si `campaign_already_installed=false`, continuar con 01. Si ya es true,
+   no repetir la migración base: revisar la instalación y pasar a 02 solo si falta.
+   Si ya existe la política, no repetir 02 sin revisar su recibo/definiciones.
+2. `01-install-campaign.sql`: copia exacta de
+   `supabase/migrations/202611010001_social_annual_promotion.sql`.
+3. `02-install-expiry-policy.sql`: copia exacta de
+   `supabase/migrations/202611020001_promotion_expiry_policy.sql`.
+   Instala la política aprobada, pero mantiene campaña y avisos apagados.
+   Rechaza un motor incompatible en lugar de reemplazarlo silenciosamente.
+4. `03-install-EXISTING-hashes.sql`: copia del manifiesto original de los mismos
+   20 códigos. Solo hashes. Idempotente: rechaza otro inventario, no agrega códigos.
+5. `04-verify-disabled.sql`: solo lectura; debe confirmar política compatible,
+   RLS/permisos privados, motor filtrado, ambos gates apagados, cero beneficios,
+   exactamente 10 Instagram y 10 Facebook sin usar. Guardar el recibo JSON.
+
+**Detenerse tras 04.** Estos pasos no publican ni habilitan la campaña. Las
+migraciones son incrementales: no aplicar el historial entero ni volver a iniciar
+`account_activation_policy`. Si alguna transacción falla, conservar su error y no
+avanzar. Los pasos 01 y 02 no son scripts recurrentes.
+
+## Integración, publicación y habilitación posteriores
+
+1. Completar las pruebas pendientes y verificar el resultado de 04 en la DB actual.
+2. Integrar solo los commits de esta rama sobre el HEAD remoto actualizado de
+   `sprint-1-landing`, mediante el flujo Git conectado a Vercel. Conservar el resto
+   de cambios. Mantener ambos flags de servidor ausentes/false en el primer deploy.
+3. Esperar READY en Production y comprobar que su SHA es el commit aprobado.
+   Consultar `GET /api/promotions/readiness` autenticado con `CRON_SECRET`:
+   `compatible=true`, `revision` correcto, DB con política
+   `read_only_finish_started_cycles_v1`, `engine_gated=true`, 10/10 disponibles,
+   cero beneficios, gates apagados. Es una consulta: no consume códigos ni manda correo.
+4. Solo con estas evidencias, ejecutar
+   `05-enable-ONLY-AFTER-VERIFIED-DEPLOY.sql`. No ejecutarlo durante la instalación.
+5. Configurar en Vercel Production únicamente `SOCIAL_PROMOTION_ENABLED=true` y
+   `PROMOTION_EXPIRY_NOTICES_ENABLED=true`; desplegar el mismo commit. No cambiar
+   flags de continuidad, Guardian, Safety Window, entrega privada o Stripe.
+6. Repetir readiness autenticado: SHA correcto, compatible, gates de servidor y
+   DB activos, exactamente 10 códigos disponibles por plataforma, cero beneficios.
+   Confirmar cron configurado y ausencia de avisos pendientes sin promociones.
+   No hacer un canje real para probar producción.
+
+Para suspender nuevos canjes/avisos, apagar sus propios gates. No eliminar
+beneficios, inventarios, reservas, mensajes o ledger; no tocar ciclos en curso.
+
+## Validación y límites
+
+- 15 pruebas Node aprobadas: canje, presentación, generador anterior, autenticación,
+  avisos bilingües, claves idempotentes, resultados inciertos y cron aislado.
+- PostgreSQL desechable: aprobados canje/concurrencia, vencimiento, escrituras y
+  Storage, preservación de borrado, bloqueo de ciclos nuevos, continuidad de
+  solicitudes/reintentos, Safety Window y RPC original de confirmación, restauración
+  mediante el webhook de plan sin reset, y cola concurrente de 30/7 días.
+- Posteriormente se amplió ese laboratorio para usar el motor completo versionado
+  de `202610080002_guardian_escalation_handoff.sql`, compatible con el respaldo.
+  **Esa última ampliación quedó sin ejecutar:** se rechazó el permiso de ejecución
+  local elevada. Su sintaxis Python fue validada. Comando pendiente:
+  `python3 tests/social-promotion-integration.py --expiry`.
+- TypeScript sin errores. Lint global: 0 errores, 34 advertencias preexistentes.
+  Build Webpack de producción completado con valores públicos ficticios de
+  Supabase. Ese artefacto local no se publica: Vercel recompila con sus variables.
+- No hay validación de SQL contra producción ni evidencia de nueva migración o
+  activación remota. No presentar este estado como campaña habilitada.

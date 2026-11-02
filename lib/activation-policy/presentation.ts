@@ -39,7 +39,7 @@ function formatDeadline(value: string | null): string {
 export function protectionPresentation(eligibility: ActivationEligibility) {
   switch (eligibility.status) {
     case "promotion_expired":
-      return { title: "Promotional access expired", detail: "No charge or automatic renewal. Your messages are retained.", deadline: formatDeadline(eligibility.promotion!.expires_at) };
+      return { title: "Promotional access expired", detail: "Creation and editing are paused. You can view, download and request deletion of your messages.", deadline: formatDeadline(eligibility.promotion!.expires_at) };
     case "active":
       if (eligibility.access_kind === "promotion") return {
         title: "Promotional access", detail: "12 months of access. No charge or automatic renewal.",

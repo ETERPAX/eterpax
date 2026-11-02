@@ -1,4 +1,5 @@
 "use client";
+import { usePromotionPermissions, PromotionPermissionNotice } from "@/components/promotions/PromotionPermissions";
 import { useLanguage } from "@/components/LanguageProvider";
 
 import { ArrowRight, ShieldCheck, Check, X } from "lucide-react";
@@ -8,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { OnboardingFormLayout } from "@/components/auth/OnboardingFormLayout";
 import { supabase } from "@/lib/supabase";
 export default function CheckInPage() {
+  const promotionPermission = usePromotionPermissions();
   const { message: ui } = useLanguage();
   const [selectedFrequency, setSelectedFrequency] = useState<number | null>(
     null
@@ -54,6 +56,7 @@ export default function CheckInPage() {
   }, []);
 
   const handleContinue = async () => {
+    if (promotionPermission !== "allowed") return;
     if (saveInFlight.current) return;
 
     if (selectedFrequency === null) {
@@ -106,6 +109,8 @@ export default function CheckInPage() {
       description: "A quieter rhythm",
     },
   ];
+
+  if (promotionPermission !== "allowed") return <PromotionPermissionNotice state={promotionPermission} />;
 
   return (
     <OnboardingFormLayout step={5} totalSteps={5}>

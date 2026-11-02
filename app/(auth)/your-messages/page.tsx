@@ -1,4 +1,5 @@
 "use client";
+import { usePromotionPermissions, PromotionPermissionNotice } from "@/components/promotions/PromotionPermissions";
 import { useLanguage } from "@/components/LanguageProvider";
 import EterpaxLetterEditor from "@/components/EterpaxLetterEditor.tsx/EterpaxLetterEditor";
 import Link from "next/link";
@@ -44,6 +45,7 @@ type RecordedVideo = {
 };
 
 function YourMessagesContent() {
+  const promotionPermission = usePromotionPermissions();
   const { message: ui, format } = useLanguage();
   const searchParams = useSearchParams();
   const messageId = searchParams.get("message");
@@ -64,6 +66,7 @@ function YourMessagesContent() {
   }, [messageId, isNewMessage]);
 
   async function ensureDraftMessage(): Promise<string> {
+    if (promotionPermission !== "allowed") throw new Error("Message writes unavailable");
     if (messageId) return messageId;
     if (draftRef.current?.source === messageId) return draftRef.current.promise;
     const promise = (async () => {
@@ -1395,6 +1398,7 @@ if (!stream) {
 
   const saveMessage =
     async () => {
+      if (promotionPermission !== "allowed") return;
       if (!editReady(searchParams.get("message"), loadedMessageId, loadingMessages, loadError)) {
         alert(ui("Wait until the saved message has loaded completely before saving."));
         return;
@@ -2031,6 +2035,12 @@ if (recordedVideo) {
   /* =========================================================
      RENDER
   ========================================================= */
+  if ((messageId || isNewMessage) && promotionPermission !== "allowed") {
+    return <OnboardingFormLayout step={5} totalSteps={5}>
+      <PromotionPermissionNotice state={promotionPermission} />
+      {messageId && <Link className="underline" href={`/review?message=${encodeURIComponent(messageId)}`}>{ui("Preview available content")}</Link>}
+    </OnboardingFormLayout>;
+  }
   if (messageId && !editReady(messageId, loadedMessageId, loadingMessages, loadError)) {
     return <OnboardingFormLayout step={5} totalSteps={5}>
       <div role={loadError ? "alert" : "status"} className="rounded-xl border p-6">
@@ -2048,6 +2058,7 @@ if (recordedVideo) {
         step={5}
         totalSteps={5}
       >
+        <PromotionPermissionNotice state={promotionPermission} />
         <div className="space-y-8">
   
           {/* BACK */}
