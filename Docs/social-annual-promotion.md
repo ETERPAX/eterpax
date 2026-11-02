@@ -124,7 +124,7 @@ avanzar. Los pasos 01 y 02 no son scripts recurrentes.
 
 ## Integración, publicación y habilitación posteriores
 
-1. Completar las pruebas pendientes y verificar el resultado de 04 en la DB actual.
+1. Reutilizar las pruebas específicas aprobadas y verificar el resultado de 04 en la DB actual.
 2. Integrar solo los commits de esta rama sobre el HEAD remoto actualizado de
    `sprint-1-landing`, mediante el flujo Git conectado a Vercel. Conservar el resto
    de cambios. Mantener ambos flags de servidor ausentes/false en el primer deploy.
@@ -154,13 +154,31 @@ beneficios, inventarios, reservas, mensajes o ledger; no tocar ciclos en curso.
   Storage, preservación de borrado, bloqueo de ciclos nuevos, continuidad de
   solicitudes/reintentos, Safety Window y RPC original de confirmación, restauración
   mediante el webhook de plan sin reset, y cola concurrente de 30/7 días.
-- Posteriormente se amplió ese laboratorio para usar el motor completo versionado
-  de `202610080002_guardian_escalation_handoff.sql`, compatible con el respaldo.
-  **Esa última ampliación quedó sin ejecutar:** se rechazó el permiso de ejecución
-  local elevada. Su sintaxis Python fue validada. Comando pendiente:
-  `python3 tests/social-promotion-integration.py --expiry`.
+- El usuario confirmó que el motor completo ya está validado y que el rechazo de
+  su repetición fue intencional. No se requiere ni se repetirá esa batería general
+  para esta campaña. Se reutiliza la evidencia específica de PostgreSQL y Node ya
+  obtenida; no se presenta la ampliación rechazada como una prueba ejecutada.
+- Cobertura específica: `tests/promotion-expiry-checks.py` verifica que el ciclo
+  programado sin fallos permanece idéntico al vencer, que solicitudes/reintentos
+  continúan, que Safety Window no cambia y que `confirm_check_in()` sigue operando.
+  También verifica `sync_guardian_plan_subscription()`, permisos de escritura
+  restaurados y conservación exacta del ciclo. `tests/promotion-expiry.test.mjs`
+  verifica que el cron solo reclama/finaliza avisos y nunca llama a release o
+  continuidad. La migración no agrega disparadores temporales de entrega:
+  vencer solo cambia el resultado del predicado de permisos; las entregas de
+  procesos anteriores siguen sus reglas ya validadas.
 - TypeScript sin errores. Lint global: 0 errores, 34 advertencias preexistentes.
   Build Webpack de producción completado con valores públicos ficticios de
   Supabase. Ese artefacto local no se publica: Vercel recompila con sus variables.
 - No hay validación de SQL contra producción ni evidencia de nueva migración o
   activación remota. No presentar este estado como campaña habilitada.
+
+## Siguiente paso manual
+
+Pendiente de recibir el resultado de `00-preflight.sql` ejecutado en la DB actual.
+Revisarlo antes de indicar 01 o 02; no asumir que ninguna migración fue aplicada
+por terceros. Después se revisarán la carga de los hashes originales (03) y el
+recibo de instalación deshabilitada (04). Solo entonces procede la integración
+Git y el despliegue ya autorizados. La repetición del motor general no es un
+bloqueo: el bloqueo actual es la falta de evidencia de la DB y de acceso SQL
+administrativo para obtenerla directamente.
